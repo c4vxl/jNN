@@ -1,12 +1,15 @@
 package de.c4vxl.engine.data;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Random;
+import java.util.*;
 import java.util.function.BiFunction;
 
+/**
+ * A Tensor can be understood as a multidimensional matrix of different datatypes capable of performing various mathematical operations.
+ * These operations include element-wise computation, matrix multiplication, reshaping, transposing, and more.
+ *
+ * @author c4vxl
+ */
 @SuppressWarnings("unchecked")
 public class Tensor<T> {
     // default data type
@@ -70,6 +73,32 @@ public class Tensor<T> {
     public static <T> Tensor<T> of(T obj, int... shape) {
         return new Tensor<>((Class<T>) obj.getClass(), shape).fill(obj);
     }
+
+    /**
+     * Construct a Tensor filled with zeros
+     * @param shape Shape of the Tensor
+     */
+    public static Tensor<Integer> zeros(int... shape) { return Tensor.of(0, shape); }
+
+    /**
+     * Construct a Tensor filled with zeros
+     * @param dtype Datatype of the Tensor
+     * @param shape Shape of the Tensor
+     */
+    public static <T> Tensor<T> zeros(Class<T> dtype, int... shape) { return Tensor.of(Objects.requireNonNull(valueOf(dtype, "0")), shape); }
+
+    /**
+     * Construct a Tensor filled with ones
+     * @param shape Shape of the Tensor
+     */
+    public static Tensor<Integer> ones(int... shape) { return Tensor.of(1, shape); }
+
+    /**
+     * Construct a Tensor filled with ones
+     * @param dtype Datatype of the Tensor
+     * @param shape Shape of the Tensor
+     */
+    public static <T> Tensor<T> ones(Class<T> dtype, int... shape) { return Tensor.of(Objects.requireNonNull(valueOf(dtype, "1")), shape); }
 
     /**
      * Construct a Tensor filled with numbers of a range
