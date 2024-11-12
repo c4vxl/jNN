@@ -75,6 +75,14 @@ public class Tensor<T> {
     }
 
     /**
+     * Construct a Tensor of a list of values
+     * @param val List of values
+     */
+    public static <T> Tensor<T> of(T... val) {
+        return new Tensor<>(val, val.length);
+    }
+
+    /**
      * Construct a Tensor filled with zeros
      * @param shape Shape of the Tensor
      */
@@ -134,13 +142,15 @@ public class Tensor<T> {
      * @param dtype Specify the data type
      * @param val value to parse
      */
-    public static <T> T valueOf(Class<?> dtype, String val) {
+    public static <T> T valueOf(Class<?> dtype, Object val) {
+        String v = val.toString();
+
         // no comma for Integers and Booleans
         if (dtype == Integer.class || dtype == Boolean.class)
-            val = val.split("\\.")[0];
+            v = v.split("\\.")[0];
 
         try {
-            return (T) dtype.getMethod("valueOf", String.class).invoke(null, val);
+            return (T) dtype.getMethod("valueOf", String.class).invoke(null, v);
         } catch (Exception e) {
             return null;
         }
@@ -150,7 +160,7 @@ public class Tensor<T> {
      * Get the representation of a value in current dtype
      * @param val Your value to parse to the current dtype
      */
-    public T valueOf(String val) { return valueOf(dtype, val); }
+    public T valueOf(Object val) { return valueOf(dtype, val); }
 
     /**
      * Flatten the index of the location in the Tensor
@@ -173,12 +183,75 @@ public class Tensor<T> {
     }
 
     /**
+     * Create a copy of this Tensor with another data type
+     * @param dtype The new data type
+     */
+    public <R> Tensor<R> asDType(Class<R> dtype) {
+        R[] data = (R[]) Array.newInstance(dtype, this.size);
+        for (int i = 0; i < data.length; i++) {
+            data[i] = valueOf(dtype, this.data[i]);
+        }
+
+        return new Tensor<>(data, this.shape);
+    }
+
+    /**
+     * Sum across a given dimension.
+     */
+    public Tensor<T> sum(int axis) {
+        if (axis < 0 || axis >= this.shape.length)
+            throw new IllegalArgumentException("Invalid axis specified.");
+
+        if (dtype == Boolean.class)
+            throw new RuntimeException("Operation cannot be performed on dtype 'Boolean'");
+
+        int[] newShape = shape.length == 1 ? new int[]{shape[0]} : new int[shape.length - 1];
+
+        int newSize = 1;
+        for (int i = 0, j = 0; i < shape.length; i++) {
+            if (i != axis) {
+                newShape[j++] = shape[i];
+                newSize *= shape[i];
+            }
+        }
+
+        // Summing across the specified axis
+        T[] resultData = (T[]) Array.newInstance(dtype, newSize);
+        Arrays.fill(resultData, valueOf(0)); // Start with zeros for sum accumulation
+        int[] index = new int[shape.length];
+        for (int i = 0; i < size; i++) {
+            int currentIndex = i;
+
+            // Compute the index array for the current element
+            for (int j = shape.length - 1; j >= 0; j--) {
+                index[j] = currentIndex % shape[j];
+                currentIndex /= shape[j];
+            }
+
+            // Determine output index based on the axis we're summing over
+            int outputIndex = 0;
+            for (int j = 0, k = 0; j < shape.length; j++) {
+                if (j != axis) {
+                    outputIndex = outputIndex * newShape[k] + index[j];
+                    k++;
+                }
+            }
+
+            // Perform the summation along the specified axis
+            resultData[outputIndex] = numericalOperation(resultData[outputIndex], data[i], Double::sum);
+        }
+
+        return new Tensor<>(resultData, newShape);
+    }
+
+
+    /**
      * Perform an operation on each element in this Tensor
      */
     public Tensor<T> elementWise(BiFunction<T, Integer, Object> task) {
         Tensor<T> out = this.clone();
         for (int i = 0; i < this.data.length; i++) {
-            out.data[i] = (T) task.apply(this.data[i], i);
+            out.data[i] = valueOf(task.apply(this.data[i], i));
         }
 
         return out;
@@ -197,12 +270,28 @@ public class Tensor<T> {
 
     /**
      * Perform element wise addition
+     * @param other Pass the other object
+     */
+    public Tensor<T> add(T other) {
+        return this.add(Tensor.of(other, shape));
+    }
+
+    /**
+     * Perform element wise addition
      * @param other Pass the other tensor
      */
     public Tensor<T> add(Tensor<T> other) {
         return this.clone().elementWise((a, i) ->
                 numericalOperation(a, other.data[i], Double::sum)
         );
+    }
+
+    /**
+     * Perform element wise subtraction
+     * @param other Pass the other object
+     */
+    public Tensor<T> sub(T other) {
+        return this.sub(Tensor.of(other, shape));
     }
 
     /**
@@ -217,12 +306,28 @@ public class Tensor<T> {
 
     /**
      * Perform element wise division
+     * @param other Pass the other object
+     */
+    public Tensor<T> div(T other) {
+        return this.div(Tensor.of(other, shape));
+    }
+
+    /**
+     * Perform element wise division
      * @param other Pass the other tensor
      */
     public Tensor<T> div(Tensor<T> other) {
         return this.clone().elementWise((a, i) ->
                 numericalOperation(a, other.data[i], (o, s) -> o / s)
         );
+    }
+
+    /**
+     * Perform element wise multiplication
+     * @param other Pass the other object
+     */
+    public Tensor<T> mul(T other) {
+        return this.mul(Tensor.of(other, shape));
     }
 
     /**
