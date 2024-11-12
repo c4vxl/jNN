@@ -3,6 +3,7 @@ package de.c4vxl.engine.data;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Random;
 import java.util.function.BiFunction;
 
@@ -10,6 +11,9 @@ import java.util.function.BiFunction;
 public class Tensor<T> {
     // default data type
     public static Class<?> defaultDataType = Float.class;
+
+    public boolean is2d() { return this.shape.length == 2; }
+    public boolean is3d() { return this.shape.length == 3; }
 
     public Class<T> dtype;
     public T[] data;
@@ -68,6 +72,26 @@ public class Tensor<T> {
     }
 
     /**
+     * Construct a Tensor filled with numbers of a range
+     * @param start The start of the range
+     * @param end The end of the range
+     * @param stepSize The size of the steps between start and end
+     */
+    public static <T> Tensor<T> range(Class<T> dtype, int start, int end, int stepSize) {
+        if (start > end)
+            throw new IllegalArgumentException("Start point can not be larger than end point!");
+
+        int size = (end - start) / stepSize + 1;
+
+        Object[] data = (Object[]) Array.newInstance(dtype, size);
+
+        for (int i = 0; i < size; i++)
+            data[i] = valueOf(dtype, "" + (start + i * stepSize));
+
+        return new Tensor<>((T[]) data, 1, size);
+    }
+
+    /**
      * Fill the current Tensor with one value
      * @param obj The value to fill the Tensor with
      */
@@ -77,10 +101,11 @@ public class Tensor<T> {
     }
 
     /**
-     * Get the representation of a value in current dtype
-     * @param val Your value to parse to the current dtype
+     * Get the representation of a value in a specified data type
+     * @param dtype Specify the data type
+     * @param val value to parse
      */
-    public T valueOf(String val) {
+    public static <T> T valueOf(Class<?> dtype, String val) {
         // no comma for Integers and Booleans
         if (dtype == Integer.class || dtype == Boolean.class)
             val = val.split("\\.")[0];
@@ -91,6 +116,12 @@ public class Tensor<T> {
             return null;
         }
     }
+
+    /**
+     * Get the representation of a value in current dtype
+     * @param val Your value to parse to the current dtype
+     */
+    public T valueOf(String val) { return valueOf(dtype, val); }
 
     /**
      * Flatten the index of the location in the Tensor
@@ -203,6 +234,20 @@ public class Tensor<T> {
     }
 
     /**
+     * Get the smallest object in the Tensor
+     */
+    public T min() {
+        return Arrays.stream(this.data).min((Comparator<? super T>) Comparator.naturalOrder()).orElseThrow();
+    }
+
+    /**
+     * Get the largest object in the Tensor
+     */
+    public T max() {
+        return Arrays.stream(this.data).max((Comparator<? super T>) Comparator.naturalOrder()).orElseThrow();
+    }
+
+    /**
      * Clip each element at a min and max
      * @param max The highest value an element can reach
      * @param min The lowest value an element can reach
@@ -268,21 +313,36 @@ public class Tensor<T> {
     }
 
     /**
-     * Sum across a given axis
-     * @param axis The axis to sum over
-     */
-    public Tensor<T> sum(int axis) {
-        // TODO: Implement sum
-        return null;
-    }
-
-    /**
      * Perform matrix multiplication with another Tensor
      * @param b The other Tensor to multiply with
      */
     public Tensor<T> matmul(Tensor<T> b) {
-        // TODO: Implement matrix multiplication
-        return null;
+        if (!is2d() || !b.is2d())
+            throw new IllegalArgumentException("Matmul is only supported for 2d tensors!");
+
+        if (this.shape[1] != b.shape[0])
+            throw new IllegalArgumentException("Incompatible shapes for matrix multiplication: " +
+                    Arrays.toString(this.shape) + " and " + Arrays.toString(b.shape));
+
+        int m = this.shape[0];
+        int n = this.shape[1];
+        int p = b.shape[1];
+        T[] resultData = (T[]) Array.newInstance(dtype, m * p);
+
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < p; j++) {
+                T sum = valueOf("0");
+                for (int k = 0; k < n; k++) {
+                    T a = this.data[i * n + k];
+                    T o = b.data[k * p + j];
+
+                    sum = numericalOperation(sum, numericalOperation(a, o, (t, c) -> t * c), Double::sum);
+                }
+                resultData[i * p + j] = sum;
+            }
+        }
+
+        return new Tensor<>(resultData, m, p);
     }
 
     /**
@@ -290,8 +350,42 @@ public class Tensor<T> {
      * @param dims The dimensions to transpose the Tensor over
      */
     public Tensor<T> transpose(int... dims) {
-        // TODO: Implement transposing
-        return null;
+        // just flip if it's a 2d Tensor and no dims are specified
+        if (dims.length == 0 && is2d()) dims = new int[]{1, 0};
+
+        if (dims.length == 0 || dims.length != shape.length)
+            throw new IllegalArgumentException("Invalid dimensions specified!");
+
+        // handle negative dims
+        for (int i = 0; i < dims.length; i++)
+            dims[i] = dims[i] < 0 ? shape.length + dims[i] : dims[i];
+
+        // calculate new shape and new data array
+        int[] newShape = Arrays.stream(dims).map(d -> shape[d]).toArray();
+        T[] resultData = (T[]) Array.newInstance(data.getClass().getComponentType(),
+                Arrays.stream(newShape).reduce(1, (a, b) -> a * b));
+
+        int[] strides = new int[shape.length];
+        strides[shape.length - 1] = 1;
+        for (int i = shape.length - 2; i >= 0; i--)
+            strides[i] = strides[i + 1] * shape[i + 1];
+
+        for (int i = 0; i < resultData.length; i++) {
+            int[] newIndex = new int[newShape.length];
+            int temp = i;
+            for (int j = newShape.length - 1; j >= 0; j--) {
+                newIndex[j] = temp % newShape[j];
+                temp /= newShape[j];
+            }
+
+            int originalIndex = 0;
+            for (int j = 0; j < dims.length; j++)
+                originalIndex += newIndex[j] * strides[dims[j]];
+
+            resultData[i] = data[originalIndex];
+        }
+
+        return new Tensor<>(resultData, newShape);
     }
 
     @Override
