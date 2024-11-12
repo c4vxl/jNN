@@ -68,7 +68,7 @@ public class Tensor<T> {
      * @param shape The shape of the Tensor
      */
     public static <T> Tensor<T> of(T obj, int... shape) {
-        return (Tensor<T>) new Tensor<>(new Object[]{obj}, shape);
+        return new Tensor<>((Class<T>) obj.getClass(), shape).fill(obj);
     }
 
     /**
