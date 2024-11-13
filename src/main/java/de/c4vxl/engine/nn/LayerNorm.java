@@ -1,6 +1,6 @@
 package de.c4vxl.engine.nn;
 
-import de.c4vxl.engine.data.Module;
+import de.c4vxl.engine.module.Module;
 import de.c4vxl.engine.data.Tensor;
 
 /**

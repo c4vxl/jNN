@@ -1,4 +1,4 @@
-package de.c4vxl.engine.data;
+package de.c4vxl.engine.module;
 
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.security.AnyTypePermission;

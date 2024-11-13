@@ -1,5 +1,7 @@
 package de.c4vxl.engine.data;
 
+import de.c4vxl.engine.activation.Activation;
+
 /**
  * Collection of multiple loss functions
  */

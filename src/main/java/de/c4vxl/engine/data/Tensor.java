@@ -109,6 +109,12 @@ public class Tensor<T> {
     public static <T> Tensor<T> ones(Class<T> dtype, int... shape) { return Tensor.of(Objects.requireNonNull(valueOf(dtype, "1")), shape); }
 
     /**
+     * Construct a Tensor filled with numbers of a range starting at 0 with step size = 1
+     * @param end The end of the range
+     */
+    public static <T> Tensor<T> range(Class<T> dtype, int end) { return range(dtype, 0, end, 1); }
+
+    /**
      * Construct a Tensor filled with numbers of a range
      * @param start The start of the range
      * @param end The end of the range
@@ -118,7 +124,7 @@ public class Tensor<T> {
         if (start > end)
             throw new IllegalArgumentException("Start point can not be larger than end point!");
 
-        int size = (end - start) / stepSize + 1;
+        int size = (end - 1 - start) / stepSize + 1;
 
         Object[] data = (Object[]) Array.newInstance(dtype, size);
 
@@ -126,6 +132,31 @@ public class Tensor<T> {
             data[i] = valueOf(dtype, "" + (start + i * stepSize));
 
         return new Tensor<>((T[]) data, 1, size);
+    }
+
+    /**
+     * Set a value of the data in this Tensor
+     * @param obj The value to set
+     * @param position The position for the value
+     */
+    public Tensor<T> set(T obj, int... position) {
+        int idx = this.flatIndex(position);
+        if (idx >= this.data.length)
+            throw new IllegalArgumentException("Invalid position!");
+
+        this.data[idx] = obj;
+
+        return this;
+    }
+
+    /**
+     * Get the size of one Dimension
+     * @param pos The position
+     */
+    public int size(int pos) {
+        if (pos < 0) pos = this.shape.length + pos; // handle negative indexes
+
+        return shape[pos];
     }
 
     /**
@@ -148,6 +179,12 @@ public class Tensor<T> {
         // no comma for Integers and Booleans
         if (dtype == Integer.class || dtype == Boolean.class)
             v = v.split("\\.")[0];
+
+        // need to handle boolean logic seperate
+        if (dtype == Boolean.class) {
+            if (v.equals("1")) return (T) Boolean.TRUE;
+            else return (T) Boolean.FALSE;
+        }
 
         try {
             return (T) dtype.getMethod("valueOf", String.class).invoke(null, v);
@@ -523,7 +560,7 @@ public class Tensor<T> {
     }
 
     @Override
-    protected Tensor<T> clone() {
+    public Tensor<T> clone() {
         return new Tensor<>(data.clone(), shape.clone());
     }
 

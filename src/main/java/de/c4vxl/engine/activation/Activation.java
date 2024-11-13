@@ -1,4 +1,6 @@
-package de.c4vxl.engine.data;
+package de.c4vxl.engine.activation;
+
+import de.c4vxl.engine.data.Tensor;
 
 import java.util.Arrays;
 
@@ -27,21 +29,26 @@ public class Activation {
     /**
      * Compute a softmax on the data in the Tensor
      */
-    public static Tensor<Double> Softmax(Tensor<?> tensor) {
+    public static <T> Tensor<T> Softmax(Tensor<T> tensor) {
         // work with Double as dtype here as most of the Math functions only support Double values
         Tensor<Double> doubleTensor = tensor.asDType(Double.class);
 
         Double[] data = doubleTensor.data;
         double maxLogit = doubleTensor.max();
 
-        double sumExp = Arrays.stream(data)
-                .mapToDouble(x -> Math.exp(x - maxLogit))
-                .sum();
+        double sumExp = 0.0;
+        for (double value : data) {
+            if (Double.isFinite(value)) sumExp += Math.exp(value - maxLogit);
 
+            // special handling for infinite values
+            else if (value == Double.POSITIVE_INFINITY) sumExp += 1.0;
+        }
+
+        double finalSumExp = sumExp;
         Double[] softmax = Arrays.stream(data)
-                .map(x -> Math.exp(x - maxLogit) / sumExp)
+                .map(x -> Math.exp(x - maxLogit) / finalSumExp)
                 .toArray(Double[]::new);
 
-        return new Tensor<>(softmax, tensor.shape);
+        return new Tensor<>(softmax, tensor.shape).asDType(tensor.dtype);
     }
 }
