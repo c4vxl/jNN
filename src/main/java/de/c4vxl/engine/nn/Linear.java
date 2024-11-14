@@ -1,9 +1,7 @@
 package de.c4vxl.engine.nn;
 
-import de.c4vxl.engine.data.Module;
 import de.c4vxl.engine.data.Tensor;
-
-import java.util.Random;
+import de.c4vxl.engine.module.Module;
 
 /**
  * Object for linear transformation by multiplying with weights and adding an optional bias
@@ -19,24 +17,28 @@ public class Linear extends Module {
     public Linear(int input_features, int output_features, boolean useBias) { this(input_features, output_features, Tensor.defaultDataType, useBias); }
     public Linear(int input_features, int output_features, Class<?> dtype) { this(input_features, output_features, dtype, true); }
     public Linear(int input_features, int output_features, Class<?> dtype, boolean useBias) {
-        this.weight = Tensor.zeros(dtype, input_features, output_features);
+        this.weight = Tensor.ones(dtype, input_features, output_features);
         this.bias = useBias ? Tensor.zeros(dtype, output_features) : null;
-
-        // Xavier/Glorot initialization
-        // https://paperswithcode.com/method/xavier-initialization
-        double limit = Math.sqrt(6.0 / (input_features + output_features));
-        Random rand = new Random();
-        weight.elementWise((element, index) ->
-                weight.valueOf(rand.nextDouble() * 2 * limit - limit)
-        );
     }
 
     public <T> Tensor<T> forward(Tensor<T> x) {
-        x = x.matmul(this.weight);
+        int[] shape = x.shape.clone();
+        shape[shape.length - 1] = this.weight.size(1);
 
-        if (bias != null)
-            x = x.add(bias);
+        // reshape bias & input if it is 3-dimensional (batch, seq_len, n_embd)
+        Tensor bias = this.bias;
+        if (x.is3d()) {
+            x = x.reshape(x.size(0) * x.size(1), x.size(2));
+            bias = bias == null ? null : bias.reshapeUnsafe(shape);
+        }
 
-        return x;
+        Tensor<T> result = x.matmul(this.weight);
+
+        if (this.bias != null)
+            result = result.add(bias);
+
+        result = result.reshape(shape);
+
+        return result;
     }
 }

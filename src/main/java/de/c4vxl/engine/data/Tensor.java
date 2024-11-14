@@ -44,7 +44,7 @@ public class Tensor<T> {
      */
     public Tensor(T[] data, int... shape) {
         this.shape = shape;
-        this.size = Arrays.stream(shape).reduce(1, (a, b) -> a * b);
+        this.size = TensorUtils.shapeToSize(shape);
         this.dtype = (Class<T>) data.getClass().getComponentType();
 
         // cut/loop data if it is too small/large
@@ -78,8 +78,6 @@ public class Tensor<T> {
             else if (dtype == Boolean.class) tensor.data[i] = (T) Boolean.valueOf(rand.nextBoolean());
             else throw new IllegalArgumentException("Unsupported dtype '" + dtype.getSimpleName() + "'");
         }
-
-        System.out.println(Arrays.toString(tensor.data));
 
         return tensor;
     }
@@ -173,9 +171,7 @@ public class Tensor<T> {
      * @param pos The position
      */
     public int size(int pos) {
-        if (pos < 0) pos = this.shape.length + pos; // handle negative indexes
-
-        return shape[pos];
+        return shape[TensorUtils.handleNegativeDim(this, pos)];
     }
 
     /**
@@ -223,6 +219,7 @@ public class Tensor<T> {
      * @param idx Location in the Tensor
      */
     public int flatIndex(int... idx) {
+        idx = TensorUtils.handleNegativeDims(this, idx);
         int flatIndex = 0;
         for (int i = 0; i < idx.length; i++)
             flatIndex = flatIndex * shape[i] + idx[i];
@@ -236,6 +233,15 @@ public class Tensor<T> {
      */
     public T item(int... loc) {
         return data[loc.length > 0 ? flatIndex(loc) : 0];
+    }
+
+    /**
+     * Get the item in this Tensor as a specific data type
+     * @param loc Location of the item, if not passed, the first item will be used
+     * @param dtype The new data type
+     */
+    public <R> R item(Class<R> dtype, int... loc) {
+        return valueOf(dtype, item(loc));
     }
 
     /**
@@ -438,6 +444,19 @@ public class Tensor<T> {
     }
 
     /**
+     * Fill this Tensor with items
+     * @param items Pass the items to put into the Tensor's data
+     */
+    public Tensor<T> fillWith(T... items) {
+        if(items.length > this.data.length)
+            throw new IllegalArgumentException("Items can not be more than the Tensor can hold!");
+
+        System.arraycopy(items, 0, this.data, 0, items.length);
+
+        return this;
+    }
+
+    /**
      * Clip each element at a min and max
      * @param max The highest value an element can reach
      * @param min The lowest value an element can reach
@@ -454,19 +473,31 @@ public class Tensor<T> {
 
     /**
      * Reshape the Tensor
-     * @param shape New shape of the Tensor. Important: Final size must still be the same!
+     * @param shape New shape of the Tensor
      */
     public Tensor<T> reshape(int... shape) {
-        // handle negative dims
-        for (int i = 0; i < shape.length; i++) {
-            shape[i] = shape[i] >= 0 ? shape[i] : shape.length + shape[i];
-        }
+        shape = TensorUtils.handleNegativeDims(this, shape);
 
-        if (Arrays.stream(shape).reduce(1, (a, b) -> a * b) != this.size)
+        if (TensorUtils.shapeToSize(shape) != this.size)
             throw new IllegalArgumentException("New shape must still be the same size as the old one!");
 
+        return reshapeUnsafe(shape);
+    }
+
+    /**
+     * Reshape a Tensor without checking if the new shape is possible.
+     * This allows for expanding / shrinking the size of a Tensor.
+     * WARNING: Might cause null-Values in this.data
+     * @param shape New shape of the Tensor
+     */
+    public Tensor<T> reshapeUnsafe(int... shape) {
         Tensor<T> res = this.clone();
-        res.shape = shape;
+        res.shape = TensorUtils.handleNegativeDims(this, shape);
+        res.data = (T[]) Array.newInstance(dtype, TensorUtils.shapeToSize(shape));
+        for (int i = 0; i < res.data.length; i++) {
+            res.data[i] = this.data.length > i ? this.data[i] : valueOf(0);
+        }
+        res.size = TensorUtils.shapeToSize(shape);
         return res;
     }
 
@@ -512,8 +543,11 @@ public class Tensor<T> {
      * @param b The other Tensor to multiply with
      */
     public Tensor<T> matmul(Tensor<T> b) {
-        if (!is2d() || !b.is2d())
-            throw new IllegalArgumentException("Matmul is only supported for 2d tensors!");
+        if (this.shape.length < 2 || b.shape.length < 2)
+            throw new IllegalArgumentException("Matmul requires tensors with at least two dimensions.");
+
+        if (this.shape.length >= 3 && b.shape.length >= 3)
+            return TensorUtils.matmul_batched(this, b);
 
         if (this.shape[1] != b.shape[0])
             throw new IllegalArgumentException("Incompatible shapes for matrix multiplication: " +
@@ -537,7 +571,9 @@ public class Tensor<T> {
             }
         }
 
-        return new Tensor<>(resultData, m, p);
+        Tensor<T> result = this.clone();
+        result.data = resultData;
+        return result.reshapeUnsafe(m, p);
     }
 
     /**
@@ -552,13 +588,12 @@ public class Tensor<T> {
             throw new IllegalArgumentException("Invalid dimensions specified!");
 
         // handle negative dims
-        for (int i = 0; i < dims.length; i++)
-            dims[i] = dims[i] < 0 ? shape.length + dims[i] : dims[i];
+        dims = TensorUtils.handleNegativeDims(this, dims);
 
         // calculate new shape and new data array
         int[] newShape = Arrays.stream(dims).map(d -> shape[d]).toArray();
         T[] resultData = (T[]) Array.newInstance(data.getClass().getComponentType(),
-                Arrays.stream(newShape).reduce(1, (a, b) -> a * b));
+                TensorUtils.shapeToSize(shape));
 
         int[] strides = new int[shape.length];
         strides[shape.length - 1] = 1;
