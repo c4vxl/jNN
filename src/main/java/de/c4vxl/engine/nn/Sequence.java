@@ -1,8 +1,9 @@
 package de.c4vxl.engine.nn;
 
-import de.c4vxl.engine.module.Module;
 import de.c4vxl.engine.data.Tensor;
+import de.c4vxl.engine.module.Module;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -11,10 +12,10 @@ import java.util.List;
  * @author c4vxl
  */
 public class Sequence extends Module {
-    private final List<Module> modules;
+    public final ArrayList<Module> modules;
 
     public Sequence(Module... sequence) {
-        this.modules = List.of(sequence);
+        this.modules = new ArrayList<>(List.of(sequence));
     }
 
     public Sequence add(Module module) {

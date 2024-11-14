@@ -15,6 +15,7 @@ public class Tensor<T> {
     // default data type
     public static Class<?> defaultDataType = Float.class;
 
+    public boolean is1d() { return this.shape.length == 1; }
     public boolean is2d() { return this.shape.length == 2; }
     public boolean is3d() { return this.shape.length == 3; }
 
@@ -34,19 +35,7 @@ public class Tensor<T> {
      * @param dtype Data Type of the Tensor
      * @param shape The shape of the Tensor
      */
-    public Tensor(Class<T> dtype, int... shape) {
-        this((T[]) Array.newInstance(dtype, 1), shape);
-
-        Random rand = new Random();
-        for (int i = 0; i < data.length; i++) {
-            if (dtype == Double.class) data[i] = (T) Double.valueOf(rand.nextDouble());
-            else if (dtype == Integer.class) data[i] = (T) Integer.valueOf(rand.nextInt(99));
-            else if (dtype == Long.class) data[i] = (T) Long.valueOf(rand.nextLong());
-            else if (dtype == Float.class) data[i] = (T) Float.valueOf(rand.nextFloat());
-            else if (dtype == Boolean.class) data[i] = (T) Boolean.valueOf(rand.nextBoolean());
-            else throw new IllegalArgumentException("Unsupported dtype '" + dtype.getSimpleName() + "'");
-        }
-    }
+    public Tensor(Class<T> dtype, int... shape) { this((T[]) Array.newInstance(dtype, 1), shape); }
 
     /**
      * Construct a Tensor with preconfigured data
@@ -70,8 +59,38 @@ public class Tensor<T> {
      * @param obj The object the Tensor should be filled with
      * @param shape The shape of the Tensor
      */
-    public static <T> Tensor<T> of(T obj, int... shape) {
+    public static <T> Tensor<T> filled(T obj, int... shape) {
         return new Tensor<>((Class<T>) obj.getClass(), shape).fill(obj);
+    }
+
+    /**
+     * Create a copy of this Tensor with all it's values randomized
+     */
+    public Tensor<T> randomized() {
+        Tensor<T> tensor = this.clone();
+
+        Random rand = new Random();
+        for (int i = 0; i < tensor.data.length; i++) {
+            if (dtype == Double.class) tensor.data[i] = (T) Double.valueOf(rand.nextDouble());
+            else if (dtype == Integer.class) tensor.data[i] = (T) Integer.valueOf(rand.nextInt(99));
+            else if (dtype == Long.class) tensor.data[i] = (T) Long.valueOf(rand.nextLong());
+            else if (dtype == Float.class) tensor.data[i] = (T) Float.valueOf(rand.nextFloat());
+            else if (dtype == Boolean.class) tensor.data[i] = (T) Boolean.valueOf(rand.nextBoolean());
+            else throw new IllegalArgumentException("Unsupported dtype '" + dtype.getSimpleName() + "'");
+        }
+
+        System.out.println(Arrays.toString(tensor.data));
+
+        return tensor;
+    }
+
+    /**
+     * Create a Tensor filled with random numbers
+     * @param dtype Data type of the Tensor
+     * @param shape Shape of the Tensor
+     */
+    public static <T> Tensor<T> random(Class<T> dtype, int... shape) {
+        return new Tensor<>(dtype, shape).randomized();
     }
 
     /**
@@ -86,27 +105,27 @@ public class Tensor<T> {
      * Construct a Tensor filled with zeros
      * @param shape Shape of the Tensor
      */
-    public static Tensor<Integer> zeros(int... shape) { return Tensor.of(0, shape); }
+    public static Tensor<Integer> zeros(int... shape) { return Tensor.filled(0, shape); }
 
     /**
      * Construct a Tensor filled with zeros
      * @param dtype Datatype of the Tensor
      * @param shape Shape of the Tensor
      */
-    public static <T> Tensor<T> zeros(Class<T> dtype, int... shape) { return Tensor.of(Objects.requireNonNull(valueOf(dtype, "0")), shape); }
+    public static <T> Tensor<T> zeros(Class<T> dtype, int... shape) { return Tensor.filled(Objects.requireNonNull(valueOf(dtype, "0")), shape); }
 
     /**
      * Construct a Tensor filled with ones
      * @param shape Shape of the Tensor
      */
-    public static Tensor<Integer> ones(int... shape) { return Tensor.of(1, shape); }
+    public static Tensor<Integer> ones(int... shape) { return Tensor.filled(1, shape); }
 
     /**
      * Construct a Tensor filled with ones
      * @param dtype Datatype of the Tensor
      * @param shape Shape of the Tensor
      */
-    public static <T> Tensor<T> ones(Class<T> dtype, int... shape) { return Tensor.of(Objects.requireNonNull(valueOf(dtype, "1")), shape); }
+    public static <T> Tensor<T> ones(Class<T> dtype, int... shape) { return Tensor.filled(Objects.requireNonNull(valueOf(dtype, "1")), shape); }
 
     /**
      * Construct a Tensor filled with numbers of a range starting at 0 with step size = 1
@@ -310,7 +329,7 @@ public class Tensor<T> {
      * @param other Pass the other object
      */
     public Tensor<T> add(T other) {
-        return this.add(Tensor.of(other, shape));
+        return this.add(Tensor.filled(other, shape));
     }
 
     /**
@@ -328,7 +347,7 @@ public class Tensor<T> {
      * @param other Pass the other object
      */
     public Tensor<T> sub(T other) {
-        return this.sub(Tensor.of(other, shape));
+        return this.sub(Tensor.filled(other, shape));
     }
 
     /**
@@ -346,7 +365,7 @@ public class Tensor<T> {
      * @param other Pass the other object
      */
     public Tensor<T> div(T other) {
-        return this.div(Tensor.of(other, shape));
+        return this.div(Tensor.filled(other, shape));
     }
 
     /**
@@ -364,7 +383,7 @@ public class Tensor<T> {
      * @param other Pass the other object
      */
     public Tensor<T> mul(T other) {
-        return this.mul(Tensor.of(other, shape));
+        return this.mul(Tensor.filled(other, shape));
     }
 
     /**
@@ -438,6 +457,11 @@ public class Tensor<T> {
      * @param shape New shape of the Tensor. Important: Final size must still be the same!
      */
     public Tensor<T> reshape(int... shape) {
+        // handle negative dims
+        for (int i = 0; i < shape.length; i++) {
+            shape[i] = shape[i] >= 0 ? shape[i] : shape.length + shape[i];
+        }
+
         if (Arrays.stream(shape).reduce(1, (a, b) -> a * b) != this.size)
             throw new IllegalArgumentException("New shape must still be the same size as the old one!");
 
@@ -568,9 +592,9 @@ public class Tensor<T> {
     public String toString() {
         return "Tensor{" +
                 "dtype=" + dtype.getSimpleName() +
-                ", shape=" + Arrays.toString(shape) +
+                ", shape=" + Arrays.toString(shape.clone()) +
                 ", size=" + size +
-                ", data=" + Arrays.toString(data) +
+                ", data=" + Arrays.toString(data.clone()) +
                 '}';
     }
 }

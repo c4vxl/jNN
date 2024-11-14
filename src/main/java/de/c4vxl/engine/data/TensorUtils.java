@@ -46,7 +46,6 @@ public class TensorUtils {
             throw new IllegalArgumentException("Mask must have dtype Boolean or a numeric type!");
 
         Tensor<Boolean> booleanMask = mask.asDType(Boolean.class);
-        System.out.println(booleanMask);
         for (int i = 0; i < tensor.data.length; i++) {
             if (booleanMask.data[i] == Tensor.valueOf(Boolean.class, checkFor)) {
                 tensor.data[i] = tensor.valueOf(value);
