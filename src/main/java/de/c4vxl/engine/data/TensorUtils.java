@@ -37,16 +37,18 @@ public class TensorUtils {
      * Apply a mask to a tensor
      * @param tensor The Tensor to operate on
      * @param mask The mask
+     * @param checkFor The value to check in the mask
      * @param value The value to fill the masked items with
      */
     public static <T, R> Tensor<T> maskedFill(Tensor<T> tensor, Tensor<R> mask, R checkFor, T value) {
-        if (!Arrays.equals(tensor.shape, mask.shape))
-            throw new IllegalArgumentException("Mask and tensor must have the same shape!");
+        if (!Broadcasting.isBroadcastable(tensor, mask.shape)) {
+            throw new IllegalArgumentException("Mask and tensor shapes are not broadcast-compatible!");
+        }
 
-        if (!Number.class.isAssignableFrom(mask.dtype))
-            throw new IllegalArgumentException("Mask must have dtype Boolean or a numeric type!");
+        // broadcast mask to the shape of a
+        Tensor<Boolean> booleanMask = Broadcasting.broadcast(mask.asDType(Boolean.class), tensor.shape);
 
-        Tensor<Boolean> booleanMask = mask.asDType(Boolean.class);
+        // apply mask
         for (int i = 0; i < tensor.data.length; i++) {
             if (booleanMask.data[i] == Tensor.valueOf(Boolean.class, checkFor)) {
                 tensor.data[i] = tensor.valueOf(value);

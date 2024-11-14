@@ -52,6 +52,8 @@ public class Tensor<T> {
         for (int i = 0; i < this.size; i++) {
             this.data[i] = data[i % data.length];
         }
+
+        this.randomized();
     }
 
     /**
@@ -67,7 +69,7 @@ public class Tensor<T> {
      * Create a copy of this Tensor with all it's values randomized
      */
     public Tensor<T> randomized() {
-        Tensor<T> tensor = this.clone();
+        Tensor<T> tensor = this;
 
         Random rand = new Random();
         for (int i = 0; i < tensor.data.length; i++) {
@@ -573,7 +575,9 @@ public class Tensor<T> {
 
         Tensor<T> result = this.clone();
         result.data = resultData;
-        return result.reshapeUnsafe(m, p);
+        result.shape = new int[]{m, p};
+        result.size = TensorUtils.shapeToSize(result.shape);
+        return result;
     }
 
     /**

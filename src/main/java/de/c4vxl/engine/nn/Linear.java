@@ -32,12 +32,19 @@ public class Linear extends Module {
             bias = bias == null ? null : bias.reshapeUnsafe(shape);
         }
 
-        Tensor<T> result = x.matmul(this.weight);
+        Tensor<T> result;
+        try {
+            result = x.matmul(this.weight);
+        } catch (Exception e) {
+            result = x.matmul(this.weight.transpose());
+        }
 
         if (this.bias != null)
             result = result.add(bias);
 
-        result = result.reshape(shape);
+        try {
+            result = result.reshape(shape);
+        } catch (Exception ignored) {}
 
         return result;
     }
