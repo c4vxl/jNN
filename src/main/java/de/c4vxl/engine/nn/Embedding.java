@@ -5,10 +5,10 @@ import de.c4vxl.engine.data.Tensor;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Embedding extends Module {
-    public final Tensor embedding;
+    public final Tensor weight;
 
     public Embedding(int vocab_size, int embedding_dim) {
-        this.embedding = Tensor.ones(Tensor.defaultDataType, vocab_size, embedding_dim);
+        this.weight = Tensor.ones(Tensor.defaultDataType, vocab_size, embedding_dim);
     }
 
     public <T> Tensor<T> forward(Tensor<T> tokenIndices) {
@@ -17,15 +17,15 @@ public class Embedding extends Module {
 
         int batchSize = tokenIndices.size(0);
         int seqLength = tokenIndices.size(1);
-        int n_embd = this.embedding.size(1);
+        int n_embd = this.weight.size(1);
 
-        Tensor output = Tensor.zeros(this.embedding.dtype, batchSize, seqLength, n_embd);
+        Tensor output = Tensor.zeros(this.weight.dtype, batchSize, seqLength, n_embd);
 
         for (int i = 0; i < batchSize; i++) {
             for (int j = 0; j < seqLength; j++) {
                 int tokenIndex = tokenIndices.item(Integer.class, i, j);
 
-                output.set(embedding.item(tokenIndex), i, j);
+                output.set(weight.item(tokenIndex), i, j);
             }
         }
 
