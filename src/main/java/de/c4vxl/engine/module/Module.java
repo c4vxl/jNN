@@ -115,9 +115,9 @@ public abstract class Module {
      * Load the module from a file
      * @param path Path to file
      */
-    public Module load(String path) {
+    public static Module load(String path) {
         File file = new File(path);
-        if (!file.exists()) return this;
+        if (!file.exists()) return null;
 
         file.setReadable(true);
 
