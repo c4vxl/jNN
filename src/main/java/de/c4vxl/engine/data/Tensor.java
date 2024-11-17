@@ -97,6 +97,13 @@ public class Tensor<T> {
     }
 
     /**
+     * Create an empty Tensor with no shape and no data
+     */
+    public static <T> Tensor<T> empty() {
+        return Tensor.of();
+    }
+
+    /**
      * Construct a Tensor of a list of values
      * @param val List of values
      */
@@ -178,7 +185,7 @@ public class Tensor<T> {
      * @param pos The position
      */
     public int size(int pos) {
-        return shape[TensorUtils.handleNegativeDim(this, pos)];
+        return shape[TensorUtils.handleNegativeDim(this.shape, pos)];
     }
 
     /**
@@ -233,7 +240,7 @@ public class Tensor<T> {
      * @param idx Location in the Tensor
      */
     public int flatIndex(int... idx) {
-        idx = TensorUtils.handleNegativeDims(this, idx);
+        idx = TensorUtils.handleNegativeDims(this.shape, idx);
         int flatIndex = 0;
         for (int i = 0; i < idx.length; i++)
             flatIndex = flatIndex * shape[i] + idx[i];
@@ -509,7 +516,7 @@ public class Tensor<T> {
      * @param shape New shape of the Tensor
      */
     public Tensor<T> reshape(int... shape) {
-        shape = TensorUtils.handleNegativeDims(this, shape);
+        shape = TensorUtils.handleNegativeDims(this.shape, shape);
 
         if (TensorUtils.shapeToSize(shape) != this.size)
             throw new IllegalArgumentException("New shape must still be the same size as the old one!");
@@ -525,7 +532,7 @@ public class Tensor<T> {
      */
     public Tensor<T> reshapeUnsafe(int... shape) {
         Tensor<T> res = this.clone();
-        res.shape = TensorUtils.handleNegativeDims(this, shape);
+        res.shape = TensorUtils.handleNegativeDims(this.shape, shape);
         res.data = (T[]) Array.newInstance(dtype, TensorUtils.shapeToSize(shape));
         for (int i = 0; i < res.data.length; i++) {
             res.data[i] = this.data.length > i ? this.data[i] : valueOf(0);
@@ -700,7 +707,7 @@ public class Tensor<T> {
             throw new IllegalArgumentException("Invalid dimensions specified!");
 
         // handle negative dims
-        dims = TensorUtils.handleNegativeDims(this, dims);
+        dims = TensorUtils.handleNegativeDims(this.shape, dims);
 
         // calculate new shape and new data array
         int[] newShape = Arrays.stream(dims).map(d -> shape[d]).toArray();

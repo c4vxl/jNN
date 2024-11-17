@@ -63,24 +63,24 @@ public class TensorUtils {
 
     /**
      * Allows for negative indexing into the shape of a Tensor
-     * @param tensor The Tensor to index into
+     * @param dims The dimensions to index into
      * @param shape The dimensions
      */
-    public static int[] handleNegativeDims(Tensor<?> tensor, int... shape) {
+    public static int[] handleNegativeDims(int[] dims, int... shape) {
         for (int i = 0; i < shape.length; i++) {
-            shape[i] = shape[i] >= 0 ? shape[i] : tensor.shape.length + shape[i];
+            shape[i] = shape[i] >= 0 ? shape[i] : dims.length + shape[i];
         }
 
         return shape;
     }
 
     /**
-     * Allows for negative indexing into the shape of a Tensor
-     * @param tensor The Tensor to index into
+     * Allows for negative indexing into a shape
+     * @param dims The dimensions to index into
      * @param pos The Position
      */
-    public static int handleNegativeDim(Tensor<?> tensor, int pos) {
-        if (pos < 0) pos = tensor.shape.length + pos;
+    public static int handleNegativeDim(int[] dims, int pos) {
+        if (pos < 0) pos = dims.length + pos;
 
         return pos;
     }
@@ -121,7 +121,7 @@ public class TensorUtils {
     /**
      * Put a slice in the Tensor
      * @param tensor The Tensor
-     * @param batchIdx The dimension to put it in
+     * @param batchIdx The index to insert at
      * @param data The Slice
      */
     public static <T> void setSlice(Tensor<T> tensor, int batchIdx, T[] data) {
