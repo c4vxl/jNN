@@ -1,36 +1,37 @@
 package de.c4vxl.engine.nn;
 
-import de.c4vxl.engine.module.Module;
+import de.c4vxl.engine.data.DType;
 import de.c4vxl.engine.data.Tensor;
+import de.c4vxl.engine.module.Module;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Embedding extends Module {
-    public final Tensor weight;
+    public Tensor weight;
 
     public Embedding(int vocab_size, int embedding_dim) {
-        this.weight = Tensor.ones(Tensor.defaultDataType, vocab_size, embedding_dim);
+        this.weight = Tensor.ones(DType.DEFAULT, vocab_size, embedding_dim);
     }
 
+    @SuppressWarnings("DataFlowIssue")
     public <T> Tensor<T> forward(Tensor<T> tokenIndices) {
-        if (tokenIndices.dtype != Tensor.defaultDataType)
-            throw new IllegalArgumentException("Embedding only works with Tensor.defaultDataType as of right now!");
-
         int batchSize = tokenIndices.size(0);
         int seqLength = tokenIndices.size(1);
-        int n_embd = this.weight.size(1);
+        int embeddingDim = this.weight.size(1);
 
-        Tensor output = Tensor.zeros(this.weight.dtype, batchSize, seqLength, n_embd);
+        Tensor<T> result = tokenIndices.clone()                     // clone input
+                .reshapeUnsafe(batchSize, seqLength, embeddingDim)  // reshape to (b, t, n_embd)
+                .fill(tokenIndices.valueOf(0));                     // fill with 0
 
-        for (int i = 0; i < batchSize; i++) {
-            for (int j = 0; j < seqLength; j++) {
-                int tokenIndex = tokenIndices.item(Integer.class, i, j);
+        for (int b = 0; b < batchSize; b++) {
+            for (int t = 0; t < seqLength; t++) {
+                int tokenIndex = Tensor.valueOf(Integer.class, tokenIndices.item(b, t));
 
-                output.set(weight.item(tokenIndex), i, j);
+                for (int e = 0; e < embeddingDim; e++) {
+                    result.set(Tensor.valueOf(tokenIndices.dtype, this.weight.item(tokenIndex, e)), b, t, e);
+                }
             }
         }
 
-        tokenIndices.data = (T[]) output.data;
-
-        return output;
+        return result;
     }
 }

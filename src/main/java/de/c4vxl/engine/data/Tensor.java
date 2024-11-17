@@ -1,6 +1,7 @@
 package de.c4vxl.engine.data;
 
 import java.lang.reflect.Array;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.BiFunction;
 
@@ -12,12 +13,10 @@ import java.util.function.BiFunction;
  */
 @SuppressWarnings("unchecked")
 public class Tensor<T> {
-    // default data type
-    public static Class<?> defaultDataType = Float.class;
-
-    public boolean is1d() { return this.shape.length == 1; }
-    public boolean is2d() { return this.shape.length == 2; }
-    public boolean is3d() { return this.shape.length == 3; }
+    public int rank() { return this.shape.length; }
+    public boolean is1d() { return rank() == 1; }
+    public boolean is2d() { return rank() == 2; }
+    public boolean is3d() { return rank() == 3; }
 
     public Class<T> dtype;
     public T[] data;
@@ -28,14 +27,20 @@ public class Tensor<T> {
      * Construct a Tensor with the default datatype
      * @param shape The shape of the Tensor
      */
-    public Tensor(int... shape) { this((Class<T>) defaultDataType, shape); }
+    public Tensor(int... shape) {
+        this((Class<T>) DType.DEFAULT, shape);
+        this.randomized();
+    }
 
     /**
      * Construct a Tensor with a specified datatype
      * @param dtype Data Type of the Tensor
      * @param shape The shape of the Tensor
      */
-    public Tensor(Class<T> dtype, int... shape) { this((T[]) Array.newInstance(dtype, 1), shape); }
+    public Tensor(Class<T> dtype, int... shape) {
+        this((T[]) Array.newInstance(dtype, 1), shape);
+        this.randomized();
+    }
 
     /**
      * Construct a Tensor with preconfigured data
@@ -52,8 +57,6 @@ public class Tensor<T> {
         for (int i = 0; i < this.size; i++) {
             this.data[i] = data[i % data.length];
         }
-
-        this.randomized();
     }
 
     /**
@@ -66,7 +69,7 @@ public class Tensor<T> {
     }
 
     /**
-     * Create a copy of this Tensor with all it's values randomized
+     * Randomize this Tensor's values
      */
     public Tensor<T> randomized() {
         Tensor<T> tensor = this;
@@ -143,7 +146,9 @@ public class Tensor<T> {
         if (start > end)
             throw new IllegalArgumentException("Start point can not be larger than end point!");
 
-        int size = (end - 1 - start) / stepSize + 1;
+        end = start == 0 ? end - 1 : end;
+
+        int size = (end - start) / stepSize + 1;
 
         Object[] data = (Object[]) Array.newInstance(dtype, size);
 
@@ -203,6 +208,13 @@ public class Tensor<T> {
             else return (T) Boolean.FALSE;
         }
 
+        // need to handle BigDecimal logic seperate
+        if (dtype == BigDecimal.class) {
+            if (v.equalsIgnoreCase("infinity")) return (T) BigDecimal.valueOf(Double.MAX_VALUE);
+            if (v.equalsIgnoreCase("-infinity")) return (T) BigDecimal.valueOf(Double.MIN_VALUE);
+            return (T) BigDecimal.valueOf(Double.parseDouble(v));
+        }
+
         try {
             return (T) dtype.getMethod("valueOf", String.class).invoke(null, v);
         } catch (Exception e) {
@@ -251,6 +263,8 @@ public class Tensor<T> {
      * @param dtype The new data type
      */
     public <R> Tensor<R> asDType(Class<R> dtype) {
+        if (dtype == this.dtype) return (Tensor<R>) this;
+
         R[] data = (R[]) Array.newInstance(dtype, this.size);
         for (int i = 0; i < data.length; i++) {
             data[i] = valueOf(dtype, this.data[i]);
@@ -308,7 +322,6 @@ public class Tensor<T> {
         return new Tensor<>(resultData, newShape);
     }
 
-
     /**
      * Perform an operation on each element in this Tensor
      */
@@ -322,7 +335,28 @@ public class Tensor<T> {
     }
 
     /**
-     * Perform a numerical operation between two values with unknown dtype
+     * Perform an operation element wise with another Tensor
+     * @param other The second Tensor
+     * @param function The function to apply
+     */
+    public Tensor<T> elementWise(Tensor<T> other, BiFunction<Double, Double, Double> function) {
+        // broadcast tensors
+        other = Broadcasting.broadcastTo(other, this.shape);
+
+        Tensor<T> result = this.clone();
+        for (int i = 0; i < other.size; i++) {
+            result.data[i] = valueOf( // convert result back to dtype of this Tensor
+                    function.apply(
+                            valueOf(Double.class, result.data[i]), // convert a to double
+                            valueOf(Double.class, other.data[i])  // convert b to double
+                    )
+            );
+        }
+        return result;
+    }
+
+    /**
+     * Perform a numerical operation between two values
      */
     public T numericalOperation(T a, T b, BiFunction<Double, Double, Double> operation) {
         if (dtype == Boolean.class)
@@ -331,6 +365,11 @@ public class Tensor<T> {
         Double result = operation.apply(((Number) a).doubleValue(), ((Number) b).doubleValue());
         return valueOf(result.toString());
     }
+
+    /**
+     * Compute the exponential of each element
+     */
+    public Tensor<T> exp() { return this.clone().elementWise((a, i) -> Math.exp(((Number) a).doubleValue())); }
 
     /**
      * Perform element wise addition
@@ -345,9 +384,7 @@ public class Tensor<T> {
      * @param other Pass the other tensor
      */
     public Tensor<T> add(Tensor<T> other) {
-        return this.clone().elementWise((a, i) ->
-                numericalOperation(a, other.data[i], Double::sum)
-        );
+        return this.clone().elementWise(other, Double::sum);
     }
 
     /**
@@ -363,9 +400,7 @@ public class Tensor<T> {
      * @param other Pass the other tensor
      */
     public Tensor<T> sub(Tensor<T> other) {
-        return this.clone().elementWise((a, i) ->
-                numericalOperation(a, other.data[i], (o, s) -> o - s)
-        );
+        return this.clone().elementWise(other, (a, b) -> a - b);
     }
 
     /**
@@ -381,9 +416,7 @@ public class Tensor<T> {
      * @param other Pass the other tensor
      */
     public Tensor<T> div(Tensor<T> other) {
-        return this.clone().elementWise((a, i) ->
-                numericalOperation(a, other.data[i], (o, s) -> o / s)
-        );
+        return this.clone().elementWise(other, (a, b) -> a / b);
     }
 
     /**
@@ -399,9 +432,7 @@ public class Tensor<T> {
      * @param other Pass the other tensor
      */
     public Tensor<T> mul(Tensor<T> other) {
-        return this.clone().elementWise((a, i) ->
-                numericalOperation(a, other.data[i], (o, s) -> o * s)
-        );
+        return this.clone().elementWise(other, (a, b) -> a * b);
     }
 
     /**
@@ -541,42 +572,119 @@ public class Tensor<T> {
     }
 
     /**
-     * Perform matrix multiplication with another Tensor
-     * @param b The other Tensor to multiply with
+     * Perform matrix multiplication (or batched matrix multiplication if needed) with another Tensor
+     * @param b The second Tensor
      */
     public Tensor<T> matmul(Tensor<T> b) {
-        if (this.shape.length < 2 || b.shape.length < 2)
-            throw new IllegalArgumentException("Matmul requires tensors with at least two dimensions.");
+        if (this.shape.length < 1 || b.shape.length < 1)
+            throw new IllegalArgumentException("Matmul requires tensors with at least one dimension.");
 
-        if (this.shape.length >= 3 && b.shape.length >= 3)
-            return TensorUtils.matmul_batched(this, b);
+        Tensor<T> a = this;
 
-        if (this.shape[1] != b.shape[0])
-            throw new IllegalArgumentException("Incompatible shapes for matrix multiplication: " +
-                    Arrays.toString(this.shape) + " and " + Arrays.toString(b.shape));
+        // reshape 1D tensors to 2D for matmul
+        boolean aWas1D = false, bWas1D = false;
+        if (a.shape.length == 1) {
+            a = a.unsqueeze(0); // Prepend 1 to dimension
+            aWas1D = true;
+        }
+        if (b.shape.length == 1) {
+            b = b.unsqueeze(-1); // Append 1 to dimension
+            bWas1D = true;
+        }
 
-        int m = this.shape[0];
-        int n = this.shape[1];
-        int p = b.shape[1];
-        T[] resultData = (T[]) Array.newInstance(dtype, m * p);
+        // broadcast dims
+        int[] batchShapeA = Arrays.copyOfRange(a.shape, 0, a.shape.length - 2);
+        int[] batchShapeB = Arrays.copyOfRange(b.shape, 0, b.shape.length - 2);
+        int[] broadcastedBatchShape = Broadcasting.broadcastShapes(batchShapeA, batchShapeB);
 
-        for (int i = 0; i < m; i++) {
-            for (int j = 0; j < p; j++) {
-                T sum = valueOf("0");
-                for (int k = 0; k < n; k++) {
-                    T a = this.data[i * n + k];
-                    T o = b.data[k * p + j];
 
-                    sum = numericalOperation(sum, numericalOperation(a, o, (t, c) -> t * c), Double::sum);
+        int aMatrixRows = a.size(-2);
+        int aMatrixCols = a.size(-1);
+        int bMatrixRows = b.size(-2);
+        int bMatrixCols = b.size(-1);
+
+        if (aMatrixCols != bMatrixRows)
+            throw new IllegalArgumentException("Incompatible matrix dimensions for multiplication: " +
+                    aMatrixCols + " (A cols) vs " + bMatrixRows + " (B rows)");
+
+        // calculate result shape
+        int[] resultShape = Arrays.copyOf(broadcastedBatchShape, broadcastedBatchShape.length + 2);
+        resultShape[resultShape.length - 2] = aMatrixRows;
+        resultShape[resultShape.length - 1] = bMatrixCols;
+
+        // perform batched matmul
+        Tensor<T> result = this.clone().reshapeUnsafe(resultShape);
+        int batchSize = TensorUtils.shapeToSize(broadcastedBatchShape);
+
+        for (int batchIdx = 0; batchIdx < batchSize; batchIdx++) {
+            int[] aBatchIndices = Broadcasting.getBroadcastedIndices(batchIdx, batchShapeA, broadcastedBatchShape);
+            int[] bBatchIndices = Broadcasting.getBroadcastedIndices(batchIdx, batchShapeB, broadcastedBatchShape);
+
+            Tensor<T> aMatrix = TensorUtils.slice(a, aBatchIndices);
+            Tensor<T> bMatrix = TensorUtils.slice(b, bBatchIndices);
+
+            T[] resultMatrixData = (T[]) Array.newInstance(dtype, aMatrixRows * bMatrixCols);
+
+            for (int i = 0; i < aMatrixRows; i++) {
+                for (int j = 0; j < bMatrixCols; j++) {
+                    T sum = valueOf("0");
+                    for (int k = 0; k < aMatrixCols; k++) {
+                        T aValue = aMatrix.item(i, k);
+                        T bValue = bMatrix.item(k, j);
+                        sum = numericalOperation(sum, numericalOperation(aValue, bValue, (x, y) -> x * y), Double::sum);
+                    }
+                    resultMatrixData[i * bMatrixCols + j] = sum;
                 }
-                resultData[i * p + j] = sum;
+            }
+
+            TensorUtils.setSlice(result, batchIdx, resultMatrixData);
+        }
+
+        // remove added dims
+        if (aWas1D)
+            result = result.squeeze(0);
+
+        if (bWas1D)
+            result = result.squeeze(-1);
+
+        return result;
+    }
+
+    /**
+     * concatenate two Tensors. First available axis will be used!
+     * @param other The other Tensor
+     */
+    public Tensor<T> concatenate(Tensor<T> other) {
+        if (this.size != other.size)
+            throw new IllegalArgumentException("Tensors must have the same number of dimensions.");
+
+        // find first matching axis
+        int axis = -1;
+        for (int i = 0; i < this.shape.length; i++) {
+            if (this.shape[i] == other.shape[i]) {
+                axis = i;
+                break;
             }
         }
 
+        if (axis == -1)
+            throw new IllegalArgumentException("No matching axis found for concatenation.");
+
         Tensor<T> result = this.clone();
-        result.data = resultData;
-        result.shape = new int[]{m, p};
-        result.size = TensorUtils.shapeToSize(result.shape);
+
+        // concatenate shapes
+        int newSize = this.shape[axis] + other.shape[axis];
+        int totalSize = result.data.length + other.data.length;
+
+        // new data
+        T[] concatenatedData = Arrays.copyOf(result.data, totalSize);
+        System.arraycopy(other.data, 0, concatenatedData, result.data.length, other.data.length);
+        result.data = concatenatedData;
+
+        // update shape
+        result.shape[axis] = newSize;
+        result.reshapeUnsafe(shape);
+
         return result;
     }
 

@@ -101,7 +101,7 @@ public abstract class Module {
         try {
             PrintWriter writer = new PrintWriter(new FileWriter(path));
             XStream stream = new XStream();
-            String encoded = stream.toXML(state());
+            String encoded = stream.toXML(this);
             writer.print(encoded);
             writer.close();
         } catch (IOException e) {
@@ -124,9 +124,6 @@ public abstract class Module {
         XStream stream = new XStream();
         stream.addPermission(AnyTypePermission.ANY);
 
-        Map<String, Object> loadedState = (Map<String, Object>) stream.fromXML(file);
-        load_state(loadedState);
-
-        return this;
+        return (Module) stream.fromXML(file);
     }
 }

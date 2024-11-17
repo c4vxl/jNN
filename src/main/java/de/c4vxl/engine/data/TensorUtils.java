@@ -1,8 +1,12 @@
 package de.c4vxl.engine.data;
 
-import java.lang.reflect.Array;
 import java.util.Arrays;
 
+/**
+ * Collection of utilities used by many components
+ *
+ * @author c4vxl
+ */
 public class TensorUtils {
     /**
      * Create a lower triangular Tensor from the current Tensor. The rest will be set to 0
@@ -41,31 +45,20 @@ public class TensorUtils {
      * @param value The value to fill the masked items with
      */
     public static <T, R> Tensor<T> maskedFill(Tensor<T> tensor, Tensor<R> mask, R checkFor, T value) {
-        if (!Broadcasting.isBroadcastable(tensor, mask.shape)) {
-            throw new IllegalArgumentException("Mask and tensor shapes are not broadcast-compatible!");
-        }
+        // broadcast mask to shape of the tensor
+        Tensor<R> broadcastedMask = Broadcasting.broadcastTo(mask, tensor.shape);
 
-        // broadcast mask to the shape of a
-        Tensor<Boolean> booleanMask = Broadcasting.broadcast(mask.asDType(Boolean.class), tensor.shape);
-
-        // apply mask
+        // Apply mask
         for (int i = 0; i < tensor.data.length; i++) {
-            if (booleanMask.data[i] == Tensor.valueOf(Boolean.class, checkFor)) {
-                tensor.data[i] = tensor.valueOf(value);
+            int[] broadcastedIndices = Broadcasting.getBroadcastedIndices(i, tensor.shape, broadcastedMask.shape);
+            int maskIndex = TensorUtils.computeBatchOffset(broadcastedIndices, broadcastedMask.shape);
+
+            if (broadcastedMask.data[maskIndex].equals(checkFor)) {
+                tensor.data[i] = value;
             }
         }
 
         return tensor;
-    }
-
-    /**
-     * Remove the batch dimensions (size=1) from the Tensor
-     * @param tensor The Tensor to operate on
-     */
-    public static <T> Tensor<T> withoutBatchDim(Tensor<T> tensor) {
-        return tensor.reshape(Arrays.stream(tensor.shape)
-                .filter(num -> num != 1)  // Filter out 1
-                .toArray());
     }
 
     /**
@@ -101,50 +94,69 @@ public class TensorUtils {
     }
 
     /**
-     * Perform batched matrix multiplication with another Tensor.
-     * @param a The Tensor
-     * @param b The Tensor to multiply with
+     * Slice of the Tensor
+     * @param tensor The Tensor
+     * @param indices The indecision to slice along
      */
-    public static  <T> Tensor<T> matmul_batched(Tensor<T> a, Tensor<T> b) {
-        if (a.size(0) != b.shape[0])
-            throw new IllegalArgumentException("Incompatible batch sizes: " +
-                    Arrays.toString(a.shape) + " and " + Arrays.toString(b.shape));
+    public static <T> Tensor<T> slice(Tensor<T> tensor, int[] indices) {
 
-        int batchSize = a.size(0); // b
-        int m = a.size(-2);
-        int n = a.size(-1);
-        int p = b.size(-1);
+        // create output Tensor
+        Tensor<T> result = new Tensor<>(tensor.dtype,
+                Arrays.copyOfRange(tensor.shape, indices.length, tensor.shape.length)); // calculate new shape
 
-        int[] resultShape = a.shape.clone();
-        resultShape[resultShape.length-1] = p;
-        resultShape[resultShape.length-2] = m;
-
-        Tensor<T> result = a.clone();
-        T[] resultData = (T[]) Array.newInstance(a.dtype, shapeToSize(resultShape));
-
-        for (int i = 0; i < batchSize; i++) {
-            for (int j = 0; j < a.shape[1]; j++) {
-                for (int k = 0; k < m; k++) {
-                    for (int l = 0; l < p; l++) {
-                        T sum = a.valueOf("0");
-
-                        for (int t = 0; t < n; t++) {
-                            T s = a.data[i * a.shape[1] * m * n + j * m * n + k * n + t]; // element from a
-                            T bValue = b.data[i * b.shape[1] * n * p + j * n * p + t * p + l];  // element from b
-
-                            // sum products
-                            sum = a.numericalOperation(sum, a.numericalOperation(s, bValue, (x, y) -> x * y), Double::sum);
-                        }
-
-                        // store result in result Tensor
-                        resultData[i * a.shape[1] * m * p + j * m * p + k * p + l] = sum;
-                    }
-                }
-            }
+        // calculate offset
+        int offset = 0;
+        int stride = TensorUtils.shapeToSize(Arrays.copyOfRange(tensor.shape, indices.length, tensor.shape.length));
+        for (int i = 0; i < indices.length; i++) {
+            offset += indices[i] * stride;
+            stride /= tensor.shape[i];
         }
 
-        // overwrite data and resize
-        result.data = resultData;
-        return result.reshapeUnsafe(resultShape);
+        // copy sliced data
+        System.arraycopy(tensor.data, offset, result.data, 0, result.size);
+
+        return result;
+    }
+
+    /**
+     * Put a slice in the Tensor
+     * @param tensor The Tensor
+     * @param batchIdx The dimension to put it in
+     * @param data The Slice
+     */
+    public static <T> void setSlice(Tensor<T> tensor, int batchIdx, T[] data) {
+        int matrixSize = tensor.shape[tensor.shape.length - 2] * tensor.shape[tensor.shape.length - 1];
+        if (data.length != matrixSize) {
+            throw new IllegalArgumentException("Data size does not match matrix dimensions.");
+        }
+
+        int batchOffset = batchIdx * matrixSize;
+        System.arraycopy(data, 0, tensor.data, batchOffset, matrixSize);
+    }
+
+    /**
+     * Compute the offset for batching
+     */
+    public static int computeBatchOffset(int[] indices, int[] shape) {
+        int offset = 0;
+        int stride = 1;
+
+        for (int i = shape.length - 1; i >= 0; i--) {
+            offset += indices[i] * stride;
+            stride *= shape[i];
+        }
+
+        return offset;
+    }
+
+    /**
+     * Compute the stride
+     */
+    public static int computeStride(int[] shape, int dim) {
+        int stride = 1;
+        for (int i = dim + 1; i < shape.length; i++) {
+            stride *= shape[i];
+        }
+        return stride;
     }
 }
