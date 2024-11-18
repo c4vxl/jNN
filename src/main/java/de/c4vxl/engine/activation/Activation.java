@@ -1,7 +1,5 @@
 package de.c4vxl.engine.activation;
 
-import de.c4vxl.engine.data.Broadcasting;
-import de.c4vxl.engine.data.DType;
 import de.c4vxl.engine.data.Tensor;
 import de.c4vxl.engine.data.TensorUtils;
 
