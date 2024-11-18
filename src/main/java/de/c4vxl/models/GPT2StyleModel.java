@@ -12,6 +12,7 @@ import de.c4vxl.engine.nn.Linear;
 import de.c4vxl.engine.nn.Sequence;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class GPT2StyleModel extends Module {
@@ -84,7 +85,7 @@ public class GPT2StyleModel extends Module {
         }
     }
 
-    private int block_size;
+    public int block_size;
 
     public Embedding wte;
     public Embedding wpe;
@@ -127,5 +128,42 @@ public class GPT2StyleModel extends Module {
         Tensor<Double> logits = this.lm_head.forward(x); // b, t, voc_size
 
         return logits.asDType(input.dtype);
+    }
+
+    // generation logic
+    public Tensor<Double> generate(Tensor<Double> input_ids) { return generate(input_ids, 150); }
+    public Tensor<Double> generate(Tensor<Double> input_ids, int max_new_tokens) { return generate(input_ids, max_new_tokens, -90); }
+    public Tensor<Double> generate(Tensor<Double> input_ids, int max_new_tokens, int eos_token_id) {
+        if (input_ids.is1d()) input_ids = input_ids.unsqueeze(0);
+        else throw new IllegalArgumentException("Invalid input_ids shape!");
+
+        for (int i = 0; i < max_new_tokens; i++) {
+            // "forget" older tokens if sequence becomes longer the model's block_size
+            Tensor<Double> input_ids_cut = input_ids.clone();
+            if (block_size <= input_ids_cut.size) {
+                input_ids_cut = input_ids_cut.reshapeUnsafe(1, block_size);
+                input_ids_cut.data = Arrays.copyOfRange(input_ids_cut.data, input_ids_cut.size - block_size, input_ids_cut.size);
+            }
+
+            // System.out.println(input_ids_cut); // debugging
+
+            // make prediction
+            Tensor<Double> logits = forward(input_ids_cut);
+            logits = TensorUtils.slice(logits, new int[]{0, 0});
+            logits = Activation.Softmax1d(logits);
+
+            // calculate next likely token
+            Double next_token = Double.valueOf(Arrays.stream(logits.data).toList().indexOf(logits.max()));
+
+            // stop on eos
+            if (next_token == eos_token_id)
+                break;
+
+            // concatenate
+            input_ids = input_ids.reshapeUnsafe(1, input_ids.size + 1);
+            input_ids.data[input_ids.size-1] = next_token;
+        }
+
+        return input_ids;
     }
 }
