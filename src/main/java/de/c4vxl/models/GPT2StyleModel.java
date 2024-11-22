@@ -2,7 +2,6 @@ package de.c4vxl.models;
 
 import de.c4vxl.engine.activation.Activation;
 import de.c4vxl.engine.activation.GELU;
-import de.c4vxl.engine.data.DType;
 import de.c4vxl.engine.data.Tensor;
 import de.c4vxl.engine.data.TensorUtils;
 import de.c4vxl.engine.module.Module;
@@ -24,7 +23,7 @@ public class GPT2StyleModel extends Module {
         public Linear v_proj;
         public Linear c_proj;
 
-        public CausalSelfAttention(int n_embd, int n_head, int block_size, boolean bias) {
+        public CausalSelfAttention(int n_embd, int n_head, boolean bias) {
             this.n_head = n_head;
 
             this.q_proj = new Linear(n_embd, n_embd, bias);
@@ -65,11 +64,11 @@ public class GPT2StyleModel extends Module {
         public LayerNorm ln_1;
         public LayerNorm ln_2;
 
-        public Block(int n_embd, int n_head, int block_size, boolean bias) {
+        public Block(int n_embd, int n_head, boolean bias) {
             this.ln_1 = new LayerNorm(n_embd);
             this.ln_2 = new LayerNorm(n_embd);
 
-            this.attn = new CausalSelfAttention(n_embd, n_head, block_size, bias);
+            this.attn = new CausalSelfAttention(n_embd, n_head, bias);
             this.mlp = new Sequence(
                     new Linear(n_embd, n_embd * 4, bias),
                     new GELU(),
@@ -93,15 +92,15 @@ public class GPT2StyleModel extends Module {
     public Linear lm_head;
     public LayerNorm ln_f;
 
-    public GPT2StyleModel(int n_embd, int n_head, int n_layer, int block_size, int vocab_size, boolean bias) { this(n_embd, n_head, n_layer, block_size, vocab_size, bias, DType.DEFAULT); }
-    public GPT2StyleModel(int n_embd, int n_head, int n_layer, int block_size, int vocab_size, boolean bias, Class<?> dtype) {
+    public GPT2StyleModel(int n_embd, int n_head, int n_layer, int block_size, int vocab_size) { this(n_embd, n_head, n_layer, block_size, vocab_size, true); }
+    public GPT2StyleModel(int n_embd, int n_head, int n_layer, int block_size, int vocab_size, boolean bias) {
         this.block_size = block_size;
 
         this.wte = new Embedding(vocab_size, n_embd);
         this.wpe = new Embedding(block_size, n_embd);
         this.heads = new ArrayList<>();
         for (int i = 0; i < n_layer; i++)
-            this.heads.add(new Block(n_embd, n_head, block_size, bias));
+            this.heads.add(new Block(n_embd, n_head, bias));
         this.lm_head = new Linear(n_embd, vocab_size, false);
         this.ln_f = new LayerNorm(n_embd);
     }
@@ -153,7 +152,7 @@ public class GPT2StyleModel extends Module {
             logits = Activation.Softmax1d(logits);
 
             // calculate next likely token
-            Double next_token = Double.valueOf(Arrays.stream(logits.data).toList().indexOf(logits.max()));
+            double next_token = Arrays.stream(logits.data).toList().indexOf(logits.max());
 
             // stop on eos
             if (next_token == eos_token_id)
