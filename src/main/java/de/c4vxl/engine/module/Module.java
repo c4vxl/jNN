@@ -115,7 +115,7 @@ public abstract class Module {
      * Load the module from a file
      * @param path Path to file
      */
-    public static Module load(String path) {
+    public static <T extends Module> T load(String path) {
         File file = new File(path);
         if (!file.exists()) return null;
 
@@ -124,6 +124,6 @@ public abstract class Module {
         XStream stream = new XStream();
         stream.addPermission(AnyTypePermission.ANY);
 
-        return (Module) stream.fromXML(file);
+        return (T) stream.fromXML(file);
     }
 }
