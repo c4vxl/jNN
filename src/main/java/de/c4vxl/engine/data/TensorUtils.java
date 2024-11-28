@@ -1,12 +1,14 @@
 package de.c4vxl.engine.data;
 
 import java.util.Arrays;
+import java.util.stream.IntStream;
 
 /**
  * Collection of utilities used by many components
  *
  * @author c4vxl
  */
+@SuppressWarnings({"unchecked"})
 public class TensorUtils {
     /**
      * Create a lower triangular Tensor from the current Tensor. The rest will be set to 0
@@ -150,13 +152,149 @@ public class TensorUtils {
     }
 
     /**
-     * Compute the stride
+     * Compute a single stride across one dimension
+     * @param shape The shape
+     * @param dim The Dimension to take the stride from (can be negative)
      */
     public static int computeStride(int[] shape, int dim) {
+        int[] strides = computeStrides(shape);
+        return strides[handleNegativeDim(strides, dim)];
+    }
+
+    /**
+     * Compute all strides across all dimensions
+     * @param shape The shape
+     */
+    public static int[] computeStrides(int[] shape) {
+        int[] strides = new int[shape.length];
         int stride = 1;
-        for (int i = dim + 1; i < shape.length; i++) {
+
+        for (int i = shape.length - 1; i >= 0; i--) {
+            strides[i] = stride;
             stride *= shape[i];
         }
-        return stride;
+
+        return strides;
+    }
+
+    /**
+     * Convert a flat index into a multi-dimensional index
+     * @param shape The shape to index in
+     * @param flatIndex The flat index
+     */
+    public static int[] computeIndices(int flatIndex, int[] shape) {
+        int[] indices = new int[shape.length];
+        int[] strides = computeStrides(shape);
+
+        for (int i = 0; i < shape.length; i++) {
+            indices[i] = flatIndex / strides[i];
+            flatIndex %= strides[i];
+        }
+
+        return indices;
+    }
+
+    /**
+     * Flatten a multi-dimensional index
+     * @param idx The multi-dimensional index (can be negative)
+     * @param shape The shape to index into
+     */
+    public static int flatIndex(int[] shape, int... idx) {
+        idx = TensorUtils.handleNegativeDims(shape, idx);
+
+        int flatIndex = 0;
+        for (int i = 0; i < idx.length; i++)
+            flatIndex = flatIndex * shape[i] + idx[i];
+
+        return flatIndex;
+    }
+
+    /**
+     * Split a Tensor into multiple chunks over the last dimension
+     * @param input The input tensor
+     * @param chunkSize The size of the Tensor
+     */
+    public static <T> Tensor<T>[] chunk(Tensor<T> input, int chunkSize) { return chunk(input, chunkSize, -1); }
+
+    /**
+     * Split a Tensor into multiple chunks
+     * @param input The input tensor
+     * @param chunkSize The size of the Tensor
+     * @param dim The dimension to chunk over
+     */
+    public static <T> Tensor<T>[] chunk(Tensor<T> input, int chunkSize, int dim) {
+        // handle negative dims
+        dim = handleNegativeDim(input.shape, dim);
+        int dim_size = input.size(dim);
+
+        // handle exceptions
+        if (dim_size % chunkSize != 0)
+            throw new IllegalArgumentException("Dimension size of target-dimension must be divisible by `chunkSize` for chunking!");
+
+        // create output array
+        int n_chunks = input.size(dim) / chunkSize;
+        Tensor<T>[] outputs = new Tensor[n_chunks];
+
+        // calculate shape of each chunk
+        int[] output_shape = input.shape.clone();
+        output_shape[dim] = chunkSize;
+
+        // calculate scope details
+        // a scope is one chunk of the input's data the size of chunkSize
+        int[] output_shape_ = output_shape.clone();
+        output_shape_[dim] = 1;
+        int n_scopes = shapeToSize(output_shape_);
+        int scope_distance = n_chunks * (chunkSize - 1);
+
+        for (int chunk = 0; chunk < n_chunks; chunk++) {
+            outputs[chunk] = new Tensor<>(input.dtype, output_shape);
+
+            // calculate start and end of chunk scope
+            int start = chunk * chunkSize;
+            int end = (start + chunkSize * n_scopes + scope_distance * (n_scopes - 1)) - 2;
+
+            // copy over data
+            int chunkIndex = 0;
+            for (int scopeStart = start; scopeStart < end; scopeStart+=(scope_distance + chunkSize)-1) {
+                System.arraycopy(input.data, scopeStart, outputs[chunk].data, chunkIndex, chunkSize);
+                chunkIndex += chunkSize;
+            }
+        }
+
+        return outputs;
+    }
+
+    /**
+     * Stack tensors on top of each other on a given dimension (the dimension will be created)
+     * @param dim The dimension to stack on
+     * @param tensors The list of the Tensors
+     */
+    public static <T> Tensor<T> stack(int dim, Tensor<T>... tensors) {
+        // handle exceptions
+        if (tensors.length == 0)
+            throw new IllegalArgumentException("Must have at least one tensor!");
+
+        int[] shape = tensors[0].shape;
+        dim = handleNegativeDim(shape, dim);
+
+        if (shape.length < dim)
+            throw new IllegalArgumentException("Invalid dimension!");
+
+        if (!Arrays.stream(tensors).allMatch((a) -> Arrays.equals(a.shape, shape)))
+            throw new IllegalArgumentException("All tensors need to be the same shape to be stackable!");
+
+        // at the index "dim" add a "1"
+        Tensor<T> output = new Tensor<>(tensors[0].dtype,
+                // calculate new shape with the extra dimension
+                IntStream.concat(
+                        IntStream.concat(Arrays.stream(Arrays.copyOfRange(shape, 0, dim)), IntStream.of(tensors.length)),
+                        Arrays.stream(Arrays.copyOfRange(shape, dim, shape.length))
+                ).toArray()
+        );
+
+        for (int i = 0; i < tensors.length; i++)
+            System.arraycopy(tensors[i].data, 0, output.data, tensors[i].size * i, tensors[i].size);
+
+        return output;
     }
 }
