@@ -1,16 +1,24 @@
 package de.c4vxl;
 
+import de.c4vxl.engine.data.DType;
 import de.c4vxl.engine.data.Tensor;
-import de.c4vxl.models.GPT2StyleModel;
+import de.c4vxl.models.LSTM;
 
 public class Main {
     public static void main(String[] args) {
-        // load or initialize random model
-        GPT2StyleModel model = (GPT2StyleModel) GPT2StyleModel.load("model.mdl");
-        model = model == null ? new GPT2StyleModel(180, 6, 6, 50, 100, true) : model;
+        LSTM lstmModel = LSTM.load("mod.mdl");
+        assert lstmModel != null;
 
-        System.out.println(model.generate(
-                Tensor.of(3., 1., 4., 2., 6.) // sample tokens
-        ));
+        Tensor<Double> input = Tensor.range(DType.DOUBLE, 10).unsqueeze(0);
+
+        LSTM.LSTMOutput<Double> lastOut = null;
+        for (int i = 0; i < 50; i++) {
+            if (lastOut == null)
+                lastOut = lstmModel.forward(input);
+            else
+                lastOut = lstmModel.forward(input, lastOut.h, lastOut.c);
+        }
+
+        System.out.println(lastOut.output);
     }
 }
