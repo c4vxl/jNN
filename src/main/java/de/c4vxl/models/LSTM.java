@@ -7,7 +7,6 @@ import de.c4vxl.engine.module.Module;
 import de.c4vxl.engine.nn.Linear;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class LSTM extends Module {
@@ -26,7 +25,7 @@ public class LSTM extends Module {
     public static class LSTMCell extends Module {
         public Linear ih; // forget gate
         public Linear hh; // input gate
-        private int hidden_size;
+        private final int hidden_size;
 
         public LSTMCell(int input_size, int hidden_size, boolean bias) {
             this.hidden_size = hidden_size;
@@ -64,9 +63,9 @@ public class LSTM extends Module {
         }
     }
 
-    private int hidden_size;
-    private int num_layers;
-    private int proj_size;
+    private final int hidden_size;
+    private final int num_layers;
+    private final int proj_size;
     public List<Module> cells;
 
     public LSTM(int input_size, int hidden_size) { this(input_size, hidden_size, 1); }
@@ -85,6 +84,7 @@ public class LSTM extends Module {
     }
 
     public <T extends Number> LSTMOutput<T> forward(Tensor<T> input) { return forward(input, null, null); }
+    @SuppressWarnings("unchecked")
     public <T extends Number> LSTMOutput<T> forward(Tensor<T> input, List<Tensor<T>> h, List<Tensor<T>> c) {
         boolean is_batched = input.rank() == 3;
         if (!is_batched)
@@ -133,8 +133,6 @@ public class LSTM extends Module {
             outputs.add(x);
         }
 
-
-        //noinspection unchecked
         Tensor<T> result = TensorUtils.stack(0, outputs.toArray(Tensor[]::new));
 
         // remove batch again
