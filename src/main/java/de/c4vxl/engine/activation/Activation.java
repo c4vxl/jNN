@@ -27,6 +27,31 @@ public class Activation {
         });
     }
 
+    /**
+     * Sigmoid Function element wise
+     */
+    public static <T> Tensor<T> Sigmoid(Tensor<T> input) {
+        // 1 / 1 + exp(x * -1)
+
+        return input.elementWise((obj, index) ->
+                1 /
+                (1 + Math.exp(
+                        ((Number) obj).doubleValue()
+                                * -1
+                )));
+    }
+
+    /**
+     * Applies the Hyperbolic Tangent (Tanh) function element wise.
+     * Tanh is defined as "tanh(x) = (exp(x) - exp(-x))/(exp(x) + exp(-x))"
+     * @param tensor The Tensor to perform TanH on
+     */
+    public static <T> Tensor<T> tanh(Tensor<T> tensor) {
+        Tensor<T> exp = tensor.exp();
+        Tensor<T> n_exp = tensor.mul(tensor.valueOf(-1)).exp();
+
+        return exp.sub(n_exp).div(exp.add(n_exp));
+    }
 
     /**
      * Apply Softmax. Dimension = -1 will be used!
