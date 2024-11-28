@@ -99,8 +99,9 @@ public class Tensor<T> {
     /**
      * Create an empty Tensor with no shape and no data
      */
-    public static <T> Tensor<T> empty() {
-        return Tensor.of();
+    public static <T> Tensor<T> empty(int... shape) {
+        Tensor<T> tensor = Tensor.of();
+        return shape.length >= 1 ? tensor.reshapeUnsafe(shape) : tensor;
     }
 
     /**
@@ -122,7 +123,7 @@ public class Tensor<T> {
      * @param dtype Datatype of the Tensor
      * @param shape Shape of the Tensor
      */
-    public static <T> Tensor<T> zeros(Class<T> dtype, int... shape) { return Tensor.filled(Objects.requireNonNull(valueOf(dtype, "0")), shape); }
+    public static <T> Tensor<T> zeros(Class<T> dtype, int... shape) { return Tensor.filled(Objects.requireNonNull(DType.valueOf(dtype, "0")), shape); }
 
     /**
      * Construct a Tensor filled with ones
@@ -135,7 +136,7 @@ public class Tensor<T> {
      * @param dtype Datatype of the Tensor
      * @param shape Shape of the Tensor
      */
-    public static <T> Tensor<T> ones(Class<T> dtype, int... shape) { return Tensor.filled(Objects.requireNonNull(valueOf(dtype, "1")), shape); }
+    public static <T> Tensor<T> ones(Class<T> dtype, int... shape) { return Tensor.filled(Objects.requireNonNull(DType.valueOf(dtype, "1")), shape); }
 
     /**
      * Construct a Tensor filled with numbers of a range starting at 0 with step size = 1
@@ -160,9 +161,9 @@ public class Tensor<T> {
         Object[] data = (Object[]) Array.newInstance(dtype, size);
 
         for (int i = 0; i < size; i++)
-            data[i] = valueOf(dtype, "" + (start + i * stepSize));
+            data[i] = DType.valueOf(dtype, "" + (start + i * stepSize));
 
-        return new Tensor<>((T[]) data, 1, size);
+        return new Tensor<>((T[]) data, size);
     }
 
     /**
@@ -198,55 +199,16 @@ public class Tensor<T> {
     }
 
     /**
-     * Get the representation of a value in a specified data type
-     * @param dtype Specify the data type
-     * @param val value to parse
-     */
-    public static <T> T valueOf(Class<?> dtype, Object val) {
-        String v = val.toString();
-
-        // no comma for Integers and Booleans
-        if (dtype == Integer.class || dtype == Boolean.class)
-            v = v.split("\\.")[0];
-
-        // need to handle boolean logic seperate
-        if (dtype == Boolean.class) {
-            if (v.equals("1")) return (T) Boolean.TRUE;
-            else return (T) Boolean.FALSE;
-        }
-
-        // need to handle BigDecimal logic seperate
-        if (dtype == BigDecimal.class) {
-            if (v.equalsIgnoreCase("infinity")) return (T) BigDecimal.valueOf(Double.MAX_VALUE);
-            if (v.equalsIgnoreCase("-infinity")) return (T) BigDecimal.valueOf(Double.MIN_VALUE);
-            return (T) BigDecimal.valueOf(Double.parseDouble(v));
-        }
-
-        try {
-            return (T) dtype.getMethod("valueOf", String.class).invoke(null, v);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
      * Get the representation of a value in current dtype
      * @param val Your value to parse to the current dtype
      */
-    public T valueOf(Object val) { return valueOf(dtype, val); }
+    public T valueOf(Object val) { return DType.valueOf(dtype, val); }
 
     /**
      * Flatten the index of the location in the Tensor
      * @param idx Location in the Tensor
      */
-    public int flatIndex(int... idx) {
-        idx = TensorUtils.handleNegativeDims(this.shape, idx);
-        int flatIndex = 0;
-        for (int i = 0; i < idx.length; i++)
-            flatIndex = flatIndex * shape[i] + idx[i];
-
-        return flatIndex;
-    }
+    public int flatIndex(int... idx) { return TensorUtils.flatIndex(this.shape, idx); }
 
     /**
      * Get the item in this Tensor
@@ -262,7 +224,7 @@ public class Tensor<T> {
      * @param dtype The new data type
      */
     public <R> R item(Class<R> dtype, int... loc) {
-        return valueOf(dtype, item(loc));
+        return DType.valueOf(dtype, item(loc));
     }
 
     /**
@@ -274,7 +236,7 @@ public class Tensor<T> {
 
         R[] data = (R[]) Array.newInstance(dtype, this.size);
         for (int i = 0; i < data.length; i++) {
-            data[i] = valueOf(dtype, this.data[i]);
+            data[i] = DType.valueOf(dtype, this.data[i]);
         }
 
         return new Tensor<>(data, this.shape);
@@ -354,8 +316,8 @@ public class Tensor<T> {
         for (int i = 0; i < other.size; i++) {
             result.data[i] = valueOf( // convert result back to dtype of this Tensor
                     function.apply(
-                            valueOf(Double.class, result.data[i]), // convert a to double
-                            valueOf(Double.class, other.data[i])  // convert b to double
+                            DType.valueOf(Double.class, result.data[i]), // convert a to double
+                            DType.valueOf(Double.class, other.data[i])  // convert b to double
                     )
             );
         }
@@ -607,12 +569,7 @@ public class Tensor<T> {
 
         int aMatrixRows = a.size(-2);
         int aMatrixCols = a.size(-1);
-        int bMatrixRows = b.size(-2);
         int bMatrixCols = b.size(-1);
-
-        if (aMatrixCols != bMatrixRows)
-            throw new IllegalArgumentException("Incompatible matrix dimensions for multiplication: " +
-                    aMatrixCols + " (A cols) vs " + bMatrixRows + " (B rows)");
 
         // calculate result shape
         int[] resultShape = Arrays.copyOf(broadcastedBatchShape, broadcastedBatchShape.length + 2);

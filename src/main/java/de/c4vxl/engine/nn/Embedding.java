@@ -24,10 +24,10 @@ public class Embedding extends Module {
 
         for (int b = 0; b < batchSize; b++) {
             for (int t = 0; t < seqLength; t++) {
-                int tokenIndex = Tensor.valueOf(Integer.class, tokenIndices.item(b, t));
+                int tokenIndex = DType.valueOf(Integer.class, tokenIndices.item(b, t));
 
                 for (int e = 0; e < embeddingDim; e++) {
-                    result.set(Tensor.valueOf(tokenIndices.dtype, this.weight.item(tokenIndex, e)), b, t, e);
+                    result.set(DType.valueOf(tokenIndices.dtype, this.weight.item(tokenIndex, e)), b, t, e);
                 }
             }
         }
