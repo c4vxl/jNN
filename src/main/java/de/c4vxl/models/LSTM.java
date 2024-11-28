@@ -47,7 +47,6 @@ public class LSTM extends Module {
                     this.ih.forward(x).add(this.hh.forward(h_prev)) // calculate all gates together
                     , this.hidden_size); // chunk into single gates
 
-            System.out.println(Arrays.toString(gates));
             Tensor<T> i = Activation.Sigmoid(gates[0]);
             Tensor<T> f = Activation.Sigmoid(gates[1]);
             Tensor<T> g = Activation.tanh(gates[2]);
