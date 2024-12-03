@@ -1,6 +1,7 @@
 package de.c4vxl.engine.data;
 
 import java.util.Arrays;
+import java.util.Random;
 import java.util.stream.IntStream;
 
 /**
@@ -296,5 +297,45 @@ public class TensorUtils {
             System.arraycopy(tensors[i].data, 0, output.data, tensors[i].size * i, tensors[i].size);
 
         return output;
+    }
+
+    /**
+     * Cut an input tensor to forget older tokens
+     */
+    public static <T> Tensor<T> cut_block_size(Tensor<T> input_ids, int block_size) {
+        Tensor<T> input_ids_cut = input_ids.clone();
+        if (block_size < input_ids_cut.size) {
+            System.arraycopy(input_ids.data, input_ids_cut.size - block_size, input_ids_cut.data, 0, block_size);
+            int[] shape = input_ids_cut.shape;
+            shape[shape.length - 1] = block_size;
+            input_ids_cut = input_ids_cut.reshapeUnsafe(shape);
+        }
+        return input_ids_cut;
+    }
+
+    /**
+     * Generates samples from a multinomial distribution.
+     * @param probs The probabilities tensor (1D tensor with probabilities summing to 1)
+     * @param numSamples The number of samples to generate
+     * @return A Tensor containing the generated samples
+     */
+    public static <T extends Number> Tensor<Integer> multinomial(Tensor<T> probs, int numSamples) {
+        Tensor<Integer> result = new Tensor<>(DType.INTEGER, numSamples);
+        Random rand = new Random();
+
+        for (int i = 0; i < numSamples; i++) {
+            double randomValue = rand.nextDouble();
+            double cumulativeSum = 0.0f;
+
+            for (int j = 0; j < probs.size(0); j++) {
+                cumulativeSum += probs.data[j].doubleValue();
+                if (randomValue < cumulativeSum) {
+                    result.data[i] = result.valueOf(j);
+                    break;
+                }
+            }
+        }
+
+        return result;
     }
 }

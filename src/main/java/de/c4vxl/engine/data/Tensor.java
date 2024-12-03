@@ -3,7 +3,9 @@ package de.c4vxl.engine.data;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.BiFunction;
+import java.util.stream.IntStream;
 
 /**
  * A Tensor can be understood as a multidimensional matrix of different datatypes capable of performing various mathematical operations.
@@ -296,9 +298,9 @@ public class Tensor<T> {
      */
     public Tensor<T> elementWise(BiFunction<T, Integer, Object> task) {
         Tensor<T> out = this.clone();
-        for (int i = 0; i < this.data.length; i++) {
-            out.data[i] = valueOf(task.apply(this.data[i], i));
-        }
+        IntStream.range(0, this.data.length)
+                .parallel()
+                .forEach(i -> out.data[i] = valueOf(task.apply(this.data[i], i)));
 
         return out;
     }
@@ -309,18 +311,15 @@ public class Tensor<T> {
      * @param function The function to apply
      */
     public Tensor<T> elementWise(Tensor<T> other, BiFunction<Double, Double, Double> function) {
-        // broadcast tensors
         other = Broadcasting.broadcastTo(other, this.shape);
-
         Tensor<T> result = this.clone();
-        for (int i = 0; i < other.size; i++) {
-            result.data[i] = valueOf( // convert result back to dtype of this Tensor
-                    function.apply(
-                            DType.valueOf(Double.class, result.data[i]), // convert a to double
-                            DType.valueOf(Double.class, other.data[i])  // convert b to double
-                    )
-            );
-        }
+
+        ForkJoinPool pool = ForkJoinPool.commonPool();
+        Tensor<T> finalOther = other;
+        pool.submit(() -> IntStream.range(0, size).parallel().forEach(i ->
+                        result.data[i] = valueOf(function.apply(DType.valueOf(Double.class, this.data[i]), DType.valueOf(Double.class, finalOther.data[i])))
+        )).join();
+
         return result;
     }
 
@@ -566,7 +565,6 @@ public class Tensor<T> {
         int[] batchShapeB = Arrays.copyOfRange(b.shape, 0, b.shape.length - 2);
         int[] broadcastedBatchShape = Broadcasting.broadcastShapes(batchShapeA, batchShapeB);
 
-
         int aMatrixRows = a.size(-2);
         int aMatrixCols = a.size(-1);
         int bMatrixCols = b.size(-1);
@@ -580,6 +578,12 @@ public class Tensor<T> {
         Tensor<T> result = this.clone().reshapeUnsafe(resultShape);
         int batchSize = TensorUtils.shapeToSize(broadcastedBatchShape);
 
+        // Thread pool for parallel computation
+        int availableCores = Runtime.getRuntime().availableProcessors();
+        ExecutorService executor = Executors.newFixedThreadPool(availableCores);
+
+        List<Future<?>> futures = new ArrayList<>();
+
         for (int batchIdx = 0; batchIdx < batchSize; batchIdx++) {
             int[] aBatchIndices = Broadcasting.getBroadcastedIndices(batchIdx, batchShapeA, broadcastedBatchShape);
             int[] bBatchIndices = Broadcasting.getBroadcastedIndices(batchIdx, batchShapeB, broadcastedBatchShape);
@@ -589,20 +593,37 @@ public class Tensor<T> {
 
             T[] resultMatrixData = (T[]) Array.newInstance(dtype, aMatrixRows * bMatrixCols);
 
-            for (int i = 0; i < aMatrixRows; i++) {
-                for (int j = 0; j < bMatrixCols; j++) {
-                    T sum = valueOf("0");
-                    for (int k = 0; k < aMatrixCols; k++) {
-                        T aValue = aMatrix.item(i, k);
-                        T bValue = bMatrix.item(k, j);
-                        sum = numericalOperation(sum, numericalOperation(aValue, bValue, (x, y) -> x * y), Double::sum);
-                    }
-                    resultMatrixData[i * bMatrixCols + j] = sum;
-                }
-            }
+            int finalBatchIdx = batchIdx;
+            Tensor<T> finalResult = result;
+            Future<?> future = executor.submit(() -> {
+                IntStream.range(0, aMatrixRows).parallel().forEach(i -> {
+                    IntStream.range(0, bMatrixCols).parallel().forEach(j -> {
+                        T sum = valueOf("0");
+                        for (int k = 0; k < aMatrixCols; k++) {
+                            sum = numericalOperation(sum, numericalOperation(aMatrix.item(i, k), bMatrix.item(k, j), (x, y) -> x * y), Double::sum);
+                        }
+                        resultMatrixData[i * bMatrixCols + j] = sum;
+                    });
+                });
 
-            TensorUtils.setSlice(result, batchIdx, resultMatrixData);
+                TensorUtils.setSlice(finalResult, finalBatchIdx, resultMatrixData);
+            });
+
+            futures.add(future);
         }
+
+        // wait for all tasks to complete
+        for (Future<?> future : futures) {
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                executor.shutdownNow();
+                throw new RuntimeException("Error during parallel matrix multiplication", e);
+            }
+        }
+
+        // shut down executor
+        executor.shutdown();
 
         // remove added dims
         if (aWas1D)
@@ -610,44 +631,6 @@ public class Tensor<T> {
 
         if (bWas1D)
             result = result.squeeze(-1);
-
-        return result;
-    }
-
-    /**
-     * concatenate two Tensors. First available axis will be used!
-     * @param other The other Tensor
-     */
-    public Tensor<T> concatenate(Tensor<T> other) {
-        if (this.size != other.size)
-            throw new IllegalArgumentException("Tensors must have the same number of dimensions.");
-
-        // find first matching axis
-        int axis = -1;
-        for (int i = 0; i < this.shape.length; i++) {
-            if (this.shape[i] == other.shape[i]) {
-                axis = i;
-                break;
-            }
-        }
-
-        if (axis == -1)
-            throw new IllegalArgumentException("No matching axis found for concatenation.");
-
-        Tensor<T> result = this.clone();
-
-        // concatenate shapes
-        int newSize = this.shape[axis] + other.shape[axis];
-        int totalSize = result.data.length + other.data.length;
-
-        // new data
-        T[] concatenatedData = Arrays.copyOf(result.data, totalSize);
-        System.arraycopy(other.data, 0, concatenatedData, result.data.length, other.data.length);
-        result.data = concatenatedData;
-
-        // update shape
-        result.shape[axis] = newSize;
-        result.reshapeUnsafe(shape);
 
         return result;
     }
