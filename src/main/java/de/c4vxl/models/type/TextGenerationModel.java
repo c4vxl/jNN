@@ -6,6 +6,8 @@ import de.c4vxl.engine.data.Tensor;
 import de.c4vxl.engine.data.TensorUtils;
 import de.c4vxl.engine.module.Module;
 
+import java.util.Objects;
+
 public abstract class TextGenerationModel extends Module {
     // stream of generation
     @FunctionalInterface
@@ -31,14 +33,14 @@ public abstract class TextGenerationModel extends Module {
             logits = TensorUtils.slice(logits, new int[]{logits.size(0) - 1});
             logits = Activation.Softmax1d(logits.asDType(DType.DOUBLE)).asDType(logits.dtype);
 
-            int next_token = TensorUtils.multinomial(logits, 1).item(DType.INTEGER);
+            Integer next_token = TensorUtils.multinomial(logits, 1).item(DType.INTEGER);
 
             // stream
             if (stream != null)
                 stream.apply(next_token, i);
 
             // stop on eos
-            if (next_token == eos_token_id)
+            if (Objects.equals(next_token, eos_token_id))
                 break;
 
             // concatenate
