@@ -13,6 +13,8 @@ public class BPETokenizer extends Module implements Tokenizer {
             this.a = a;
             this.b = b;
         }
+        @Override public boolean equals(Object obj) { return a.equals(((BytePair) obj).a) && b.equals(((BytePair) obj).b); }
+        @Override public int hashCode() { return 31 * a.hashCode() + b.hashCode(); }
     }
 
     public HashMap<BytePair, Integer> vocab;
