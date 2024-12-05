@@ -6,7 +6,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class BPETokenizer extends Module implements Tokenizer {
-    public record BytePair(Integer a, Integer b) {}
+    public static class BytePair {
+        public Integer a;
+        public Integer b;
+        public BytePair(Integer a, Integer b) {
+            this.a = a;
+            this.b = b;
+        }
+    }
+
     public HashMap<BytePair, Integer> vocab;
 
 
