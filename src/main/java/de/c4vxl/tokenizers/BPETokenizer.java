@@ -98,8 +98,8 @@ public class BPETokenizer extends Module implements Tokenizer {
                     Comparator.comparingInt(Map.Entry::getValue)
             ).getKey();
 
-            ids = mergePair(ids, pair, i);
-            vocab.put(pair, i);
+            ids = mergePair(ids, pair, 256 + i);
+            vocab.put(pair, 256 + i);
         }
 
         return new BPETokenizer(vocab);
