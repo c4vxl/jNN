@@ -89,7 +89,7 @@ public class BPETokenizer extends Module implements Tokenizer {
         Integer[] ids = textToByteID(text);
 
         HashMap<BytePair, Integer> vocab = new HashMap<>();
-        for (int i = 0; i < target_vocab_size; i++) {
+        for (int i = 0; i < target_vocab_size - 256; i++) {
             HashMap<BytePair, Integer> stats = getPairCount(ids);
             if (stats.isEmpty()) break;
 
