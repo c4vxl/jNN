@@ -1,19 +1,18 @@
 package de.c4vxl;
 
+import de.c4vxl.engine.data.Tensor;
 import de.c4vxl.models.LSTMForNLP;
-import de.c4vxl.pipeline.LanguageModelPipeline;
-import de.c4vxl.tokenizers.BPETokenizer;
 
 public class Main {
     public static void main(String[] args) {
-        BPETokenizer tokenizer = BPETokenizer.load("tokenizer");
-        assert tokenizer != null;
-
-        LanguageModelPipeline pipeline = new LanguageModelPipeline(
-                new LSTMForNLP(tokenizer.vocab_size(), 64, 64, 2),
-                tokenizer
+        LSTMForNLP model = new LSTMForNLP(6000, 128, 64, 4);
+        System.out.println(
+                model.generate(
+                        Tensor.of(4, 32, 23, 12, 13, 7, 12, 52, 23, 123, 324, 356, 12, 3124, 238),
+                        100, (next_token, i) -> {
+                            System.out.println(i + ": " + next_token);
+                        }, 100
+                )
         );
-
-        System.out.println(pipeline.forward("Hello"));
     }
 }

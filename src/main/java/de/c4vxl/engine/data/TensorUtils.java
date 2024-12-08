@@ -338,4 +338,33 @@ public class TensorUtils {
 
         return result;
     }
+
+    public static <T> void performBlockMultiplication(Tensor<T> a, Tensor<T> b, Tensor<T> result,
+                                                      int aRows, int aCols, int bCols,
+                                                      int startRowA, int startColA, int startRowB, int startColB,
+                                                      int blockSize) {
+        if (aRows <= blockSize || aCols <= blockSize || bCols <= blockSize) {
+            // base case: perform a direct multiplication of small blocks
+            for (int i = startRowA; i < startRowA + aRows; i++) {
+                for (int j = startColB; j < startColB + bCols; j++) {
+                    double sum = 0; // Initialize the sum
+                    for (int k = startColA; k < startColA + aCols; k++) {
+                        sum = sum + ((Number) a.item(i, k)).doubleValue() * ((Number) b.item(k, j)).doubleValue();
+                    }
+                    result.set(result.valueOf(sum), i, j);
+                }
+            }
+        } else {
+            // recursive case: split matrices into blocks
+            int halfARows = aRows / 2;
+            int halfACols = aCols / 2;
+            int halfBCols = bCols / 2;
+
+            // perform recursive block multiplications
+            performBlockMultiplication(a, b, result, halfARows, halfACols, halfBCols, startRowA, startColA, startRowB, startColB, blockSize);
+            performBlockMultiplication(a, b, result, halfARows, halfACols, halfBCols, startRowA, startColA + halfACols, startRowB + halfACols, startColB, blockSize);
+            performBlockMultiplication(a, b, result, halfARows, halfACols, halfBCols, startRowA + halfARows, startColA, startRowB, startColB + halfBCols, blockSize);
+            performBlockMultiplication(a, b, result, halfARows, halfACols, halfBCols, startRowA + halfARows, startColA + halfACols, startRowB + halfACols, startColB + halfBCols, blockSize);
+        }
+    }
 }

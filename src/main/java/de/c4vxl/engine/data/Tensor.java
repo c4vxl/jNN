@@ -552,15 +552,16 @@ public class Tensor<T> {
         // reshape 1D tensors to 2D for matmul
         boolean aWas1D = false, bWas1D = false;
         if (a.shape.length == 1) {
-            a = a.unsqueeze(0); // Prepend 1 to dimension
+            a = a.unsqueeze(0);
             aWas1D = true;
         }
+
         if (b.shape.length == 1) {
-            b = b.unsqueeze(-1); // Append 1 to dimension
+            b = b.unsqueeze(-1);
             bWas1D = true;
         }
 
-        // broadcast dims
+        // broadcast shapes
         int[] batchShapeA = Arrays.copyOfRange(a.shape, 0, a.shape.length - 2);
         int[] batchShapeB = Arrays.copyOfRange(b.shape, 0, b.shape.length - 2);
         int[] broadcastedBatchShape = Broadcasting.broadcastShapes(batchShapeA, batchShapeB);
@@ -574,63 +575,15 @@ public class Tensor<T> {
         resultShape[resultShape.length - 2] = aMatrixRows;
         resultShape[resultShape.length - 1] = bMatrixCols;
 
-        // perform batched matmul
-        Tensor<T> result = this.clone().reshapeUnsafe(resultShape);
-        int batchSize = TensorUtils.shapeToSize(broadcastedBatchShape);
+        Tensor<T> result = new Tensor<>(this.dtype, resultShape);
 
-        // Thread pool for parallel computation
-        int availableCores = Runtime.getRuntime().availableProcessors();
-        ExecutorService executor = Executors.newFixedThreadPool(availableCores);
+        // perform block-wise recursive multiplication
+        TensorUtils.performBlockMultiplication(a, b, result, aMatrixRows, aMatrixCols, bMatrixCols,
+                0, 0, 0, 0, 64);
 
-        List<Future<?>> futures = new ArrayList<>();
-
-        for (int batchIdx = 0; batchIdx < batchSize; batchIdx++) {
-            int[] aBatchIndices = Broadcasting.getBroadcastedIndices(batchIdx, batchShapeA, broadcastedBatchShape);
-            int[] bBatchIndices = Broadcasting.getBroadcastedIndices(batchIdx, batchShapeB, broadcastedBatchShape);
-
-            Tensor<T> aMatrix = TensorUtils.slice(a, aBatchIndices);
-            Tensor<T> bMatrix = TensorUtils.slice(b, bBatchIndices);
-
-            T[] resultMatrixData = (T[]) Array.newInstance(dtype, aMatrixRows * bMatrixCols);
-
-            int finalBatchIdx = batchIdx;
-            Tensor<T> finalResult = result;
-            Future<?> future = executor.submit(() -> {
-                IntStream.range(0, aMatrixRows).parallel().forEach(i -> {
-                    IntStream.range(0, bMatrixCols).parallel().forEach(j -> {
-                        T sum = valueOf("0");
-                        for (int k = 0; k < aMatrixCols; k++) {
-                            sum = numericalOperation(sum, numericalOperation(aMatrix.item(i, k), bMatrix.item(k, j), (x, y) -> x * y), Double::sum);
-                        }
-                        resultMatrixData[i * bMatrixCols + j] = sum;
-                    });
-                });
-
-                TensorUtils.setSlice(finalResult, finalBatchIdx, resultMatrixData);
-            });
-
-            futures.add(future);
-        }
-
-        // wait for all tasks to complete
-        for (Future<?> future : futures) {
-            try {
-                future.get();
-            } catch (InterruptedException | ExecutionException e) {
-                executor.shutdownNow();
-                throw new RuntimeException("Error during parallel matrix multiplication", e);
-            }
-        }
-
-        // shut down executor
-        executor.shutdown();
-
-        // remove added dims
-        if (aWas1D)
-            result = result.squeeze(0);
-
-        if (bWas1D)
-            result = result.squeeze(-1);
+        // remove the added dimensions for 1D tensors
+        if (aWas1D) result = result.squeeze(0);
+        if (bWas1D) result = result.squeeze(-1);
 
         return result;
     }
