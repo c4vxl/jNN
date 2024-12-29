@@ -2,6 +2,7 @@ package de.c4vxl.engine.utils;
 
 import de.c4vxl.engine.type.DType;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 
 public class DataUtils {
@@ -55,10 +56,34 @@ public class DataUtils {
      * @param cut Defines if the data should be cut if it already was longer than `targetLength`
      */
     public static <T> T[] padRight(T[] data, T padWith, int targetLength, boolean cut) {
+        if (!cut && data.length < targetLength)
+            return data;
+
         T[] result = Arrays.copyOfRange(data, 0, targetLength);
 
         for (int i = 0; i < result.length; i++)
             result[i] = data.length > i ? data[i] : padWith;
+
+        return result;
+    }
+
+    /**
+     * Pad a Data array to fit a given size
+     * @param data The array to pad
+     * @param padWith The object to pad the data with
+     * @param targetLength The targeted length for the data
+     * @param cut Defines if the data should be cut if it already was longer than `targetLength`
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T[] padLeft(T[] data, T padWith, int targetLength, boolean cut) {
+        int offset = targetLength - data.length;
+
+        if (!cut && offset < 0)
+            return data;
+
+        T[] result = (T[]) Array.newInstance(data.getClass().getComponentType(), targetLength);
+        for (int i = 0; i < targetLength; i++)
+            result[i] = i < offset ? padWith : data[i - offset];
 
         return result;
     }

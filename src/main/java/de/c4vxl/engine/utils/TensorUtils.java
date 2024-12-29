@@ -1,17 +1,81 @@
 package de.c4vxl.engine.utils;
 
 import de.c4vxl.engine.tensor.Tensor;
+import de.c4vxl.engine.type.DType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiFunction;
 
 public class TensorUtils {
+    /**
+     * Perform an element wise operation between the values of two Tensors
+     * @param a The first Tensor
+     * @param b The second Tensor
+     * @param operation The operation to perform. Format: (elementA, elementB) -> result
+     */
+    public static <T> Tensor<T> elementWise(Tensor<T> a, Tensor<?> b, BiFunction<Double, Double, Double> operation) {
+        if (!a.shape.equals(b.shape))
+            b = b.broadcastTo(a);
+
+        if (!a.shape.equals(b.shape))
+            throw new IllegalArgumentException("Tensors a and b must be the same shape for element wise operations!");
+
+        Tensor<?> finalB = b;
+        return TensorUtils.elementWise(a.clone(), (elementA, index) ->
+                operation.apply(
+                        DType.DOUBLE.parse(elementA),
+                        DType.DOUBLE.parse(finalB.data[index])
+                )
+        );
+    }
+
+    /**
+     * Perform an operation on each element of a Tensor
+     * @param tensor The Tensor
+     * @param operation The operation to perform. Format: (element, flatIndex) -> result
+     */
+    public static <T> Tensor<T> elementWise(Tensor<T> tensor, BiFunction<T, Integer, Object> operation) {
+        Tensor<T> result = tensor.clone();
+
+        for (int i = 0; i < result.data.length; i++)
+            result.data[i] = result.dtype.parse(operation.apply(result.data[i], i));
+
+        return result;
+    }
+
     /**
      * Returns the size of the shape if it was 1d
      * @param shape The shape
      */
     public static int shapeToSize(int... shape) { return Arrays.stream(shape).reduce(1, (a, b) -> a * b); }
+
+    /**
+     * Pad a shape by prepending ones to the left side
+     * @param targetLength The targeted length
+     * @param cut Define if the shape should be cut if it is already larger than `targetLength`
+     * @param shape The shape to pad
+     */
+    public static int[] padShapeLeft(int targetLength, boolean cut, int... shape) {
+        return DataUtils.intIndex(DataUtils.padLeft(DataUtils.IntegerIndex(shape), 1, targetLength, cut));
+    }
+
+    /**
+     * Computes the strides of a shape
+     * @param shape The shape
+     */
+    public static int[] calculateStrides(int[] shape) {
+        int[] strides = new int[shape.length];
+        int stride = 1;
+
+        for (int i = shape.length - 1; i >= 0; i--) {
+            strides[i] = stride;
+            stride *= shape[i];
+        }
+
+        return strides;
+    }
 
     /**
      * Convert a flat index into a multidimensional index for a given shape

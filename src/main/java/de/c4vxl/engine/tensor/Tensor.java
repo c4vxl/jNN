@@ -2,14 +2,12 @@ package de.c4vxl.engine.tensor;
 
 import de.c4vxl.engine.type.DType;
 import de.c4vxl.engine.type.Shape;
+import de.c4vxl.engine.utils.BroadcastingUtils;
 import de.c4vxl.engine.utils.DataUtils;
 import de.c4vxl.engine.utils.TensorUtils;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @SuppressWarnings("unchecked")
 public class Tensor<T> {
@@ -254,6 +252,27 @@ public class Tensor<T> {
     }
 
     /**
+     * Broadcast this Tensor to another shape
+     * More information at <a href="https://numpy.org/doc/stable/user/basics.broadcasting.html">Numpy broadcasting docs</a>
+     *
+     * @param shape The shape to broadcast the Tensor to
+     */
+    public Tensor<T> broadcastTo(int... shape) {
+        int[] broadcastedShape = BroadcastingUtils.broadcastShapes(this.shape.dimensions, shape);
+        Tensor<T> result = this.clone().reshapeUnsafe(broadcastedShape);
+        result.data = BroadcastingUtils.broadcastData(this.data, this.shape.dimensions, broadcastedShape);
+        return result;
+    }
+
+    /**
+     * Broadcast this Tensor to the shape of another Tensor
+     * More information at <a href="https://numpy.org/doc/stable/user/basics.broadcasting.html">Numpy broadcasting docs</a>
+     *
+     * @param other The other tensor
+     */
+    public Tensor<T> broadcastTo(Tensor<?> other) { return this.broadcastTo(other.shape.dimensions); }
+
+    /**
      * Index into the Tensors data with a multidimensional index
      * more information about indexing at `TensorUtils.index`
      *
@@ -283,7 +302,6 @@ public class Tensor<T> {
      * Set an object in the tensors data
      * @param obj The new object
      * @param idx The index of the object
-     *
      */
     public Tensor<T> set(T obj, int... idx) {
         boolean canPerform = idx.length == this.shape.rank();
@@ -298,6 +316,119 @@ public class Tensor<T> {
         this.data[flatIndex] = obj;
         return this;
     }
+
+    /**
+     * Perform element wise addition between the values of this Tensor another value
+     * @param other The other value
+     */
+    public Tensor<T> add(T other) { return this.add(Tensor.filled(other, this.shape.dimensions)); }
+
+    /**
+     * Perform element wise addition between the values of this Tensor and another one
+     * @param other The second Tensor
+     */
+    public Tensor<T> add(Tensor<T> other) { return TensorUtils.elementWise(this, other, Double::sum); }
+
+    /**
+     * Perform element wise subtraction between the values of this Tensor another value
+     * @param other The other value
+     */
+    public Tensor<T> sub(T other) { return this.sub(Tensor.filled(other, this.shape.dimensions)); }
+
+    /**
+     * Perform element wise subtraction between the values of this Tensor and another one
+     * @param other The second Tensor
+     */
+    public Tensor<T> sub(Tensor<T> other) { return TensorUtils.elementWise(this, other, (a, b) -> a - b); }
+
+    /**
+     * Perform element wise division between the values of this Tensor another value
+     * @param other The other value
+     */
+    public Tensor<T> div(T other) { return this.div(Tensor.filled(other, this.shape.dimensions)); }
+
+    /**
+     * Perform element wise division between the values of this Tensor and another one
+     * @param other The second Tensor
+     */
+    public Tensor<T> div(Tensor<T> other) { return TensorUtils.elementWise(this, other, (a, b) -> a / b); }
+
+    /**
+     * Perform element wise multiplication between the values of this Tensor another value
+     * @param other The other value
+     */
+    public Tensor<T> mul(T other) { return this.mul(Tensor.filled(other, this.shape.dimensions)); }
+
+    /**
+     * Perform element wise multiplication between the values of this Tensor and another one
+     * @param other The second Tensor
+     */
+    public Tensor<T> mul(Tensor<T> other) { return TensorUtils.elementWise(this, other, (a, b) -> a * b); }
+
+    /**
+     * Raise each element to a power
+     * @param power The power
+     */
+    public Tensor<T> pow(double power) { return this.pow(Tensor.filled(power, this.shape.dimensions)); }
+
+    /**
+     * Perform element wise power between the values of this Tensor and another one
+     * @param power The second Tensor
+     */
+    public Tensor<T> pow(Tensor<?> power) { return TensorUtils.elementWise(this, power, Math::pow); }
+
+    /**
+     * Compute the square root for each element
+     */
+    public Tensor<T> sqrt() {
+        return TensorUtils.elementWise(this, (a, i) -> Math.sqrt(DType.DOUBLE.parse(a)));
+    }
+
+    /**
+     * Perform exponentiation on each element
+     */
+    public Tensor<T> exp() {
+        return TensorUtils.elementWise(this, (a, i) -> Math.exp(DType.DOUBLE.parse(a)));
+    }
+
+    /**
+     * Perform logarithm on each element
+     */
+    public Tensor<T> log() {
+        return TensorUtils.elementWise(this, (a, i) -> Math.log(DType.DOUBLE.parse(a)));
+    }
+
+    /**
+     * Clip each element at a min and max
+     * @param min The lowest value an element can be
+     * @param max The largest value an element can be
+     */
+    public Tensor<T> clip(double min, double max) { return TensorUtils.elementWise(this, (a, i) ->
+                Math.max(Math.min(DType.DOUBLE.parse(a), max), min)); }
+
+    /**
+     * Get the largest element in the Tensors data
+     */
+    public T max() { return Arrays.stream(this.data).max((Comparator<? super T>) Comparator.naturalOrder()).orElseThrow(); }
+
+    /**
+     * Get the smallest element in the Tensors data
+     */
+    public T min() { return Arrays.stream(this.data).min((Comparator<? super T>) Comparator.naturalOrder()).orElseThrow(); }
+
+    /**
+     * Get the index of an element in the data array
+     * @param obj The object to search for
+     */
+    public int indexOf(T obj) { return Arrays.stream(this.data).toList().indexOf(obj); }
+
+    /**
+     * Get the multidimensional index of an element in the data array
+     * @param obj The object to search for
+     */
+    public int[] indexOf_md(T obj) { return TensorUtils.unravelIndex(this.shape.dimensions, this.indexOf(obj)); }
+
+
 
     @Override
     public Tensor<T> clone() {
