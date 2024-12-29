@@ -26,4 +26,14 @@ public class Shape {
     public String toString() {
         return Arrays.toString(dimensions);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof Shape && Arrays.equals(((Shape) o).dimensions, this.dimensions);
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(dimensions);
+    }
 }

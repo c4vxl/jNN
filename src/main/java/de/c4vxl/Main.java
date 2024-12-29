@@ -1,10 +1,16 @@
 package de.c4vxl;
 
 import de.c4vxl.engine.tensor.Tensor;
-import de.c4vxl.engine.type.DType;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println(Tensor.range(3, 2));
+        Tensor<Integer> a = Tensor.range(5, 3, 2);
+        System.out.println(a);
+        Tensor<Integer> slice = a.get(0, 0);
+        System.out.println(slice);
+
+        System.out.println(
+                a.set(1, 0, 0, 0)
+        );
     }
 }
