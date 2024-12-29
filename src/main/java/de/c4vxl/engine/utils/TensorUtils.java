@@ -10,6 +10,17 @@ import java.util.function.BiFunction;
 
 public class TensorUtils {
     /**
+     * Returns a Tensor with all it's values filled with a specified value
+     * @param tensor The tensor
+     * @param obj The object to fill the tensors data with
+     */
+    public static <T> Tensor<T> filled(Tensor<T> tensor, Object obj) {
+        Tensor<T> result = tensor.clone();
+        Arrays.fill(result.data, result.dtype.parse(obj));
+        return result;
+    }
+
+    /**
      * Perform an element wise operation between the values of two Tensors
      * @param a The first Tensor
      * @param b The second Tensor
@@ -59,6 +70,13 @@ public class TensorUtils {
      */
     public static int[] padShapeLeft(int targetLength, boolean cut, int... shape) {
         return DataUtils.intIndex(DataUtils.padLeft(DataUtils.IntegerIndex(shape), 1, targetLength, cut));
+    }
+
+    public static int[][] calculatePossibleIndices(int[] shape) {
+        int[][] combinations = new int[TensorUtils.shapeToSize(shape)][shape.length];
+        for (int i = 0; i < combinations.length; i++)
+            combinations[i] = TensorUtils.unravelIndex(shape, i);
+        return combinations;
     }
 
     /**
@@ -138,8 +156,8 @@ public class TensorUtils {
             throw new IndexOutOfBoundsException("Number of dimensions exceeds the tensor rank. (" + dimensions.length + " > " + tensor.shape.rank() + ")");
 
 
-        dimensions = DataUtils.handleNegativeIndexing(tensor.shape.dimensions,
-                DataUtils.padRight(dimensions, null, tensor.shape.rank(), false));
+        dimensions = DataUtils.padRight(dimensions, null, tensor.shape.dimensions.length, false);
+        dimensions = DataUtils.handleNegativeIndexing(tensor.shape.dimensions, dimensions);
 
         Tensor<T> result = Tensor.empty(TensorUtils.calculateSliceShape(tensor, dimensions))
                 .asDType(tensor.dtype);
@@ -190,5 +208,35 @@ public class TensorUtils {
         }
 
         return tensor;
+    }
+
+    /**
+     * Reduce all elements across one dimension by applying a specific operation on them.
+     * @param input The input tensor
+     * @param dim The dimension to reduce over
+     * @param operation The operation to use (for example: Tensor::add, Tensor::sub, ...)
+     * @param keepDim Reducing over a dimension will result in the dimension becoming the size "1".
+     *                If `keepDim` is false, this dimension will automatically be removed (squeezed).
+     *                If `keepDim` is true, this dimension will be kept.
+     */
+    public static <T> Tensor<T> reduceAlongDimension(Tensor<T> input, int dim, BiFunction<Tensor<T>, Tensor<T>, Tensor<T>> operation, boolean keepDim) {
+        dim = DataUtils.handleNegativeIndexing(input.shape.dimensions, dim);
+
+        int[] outputShape = input.shape.dimensions.clone();
+        outputShape[dim] = 1;
+        Tensor<T> result = TensorUtils.filled(input.reshapeUnsafe(outputShape), 0).squeeze(dim);
+
+        // perform operation
+        // for i in 0...dimSize: operation( result, input[:, :, ..., i, :, :, ...] )
+        Integer[] sliceIndex = new Integer[input.shape.rank()];
+        for (int i = 0; i < input.size(dim); i++) {
+            sliceIndex[dim] = i;
+            result = operation.apply(result, input.get(sliceIndex));
+        }
+
+        if (!keepDim)
+            result = result.unsqueeze(dim);
+
+        return result;
     }
 }

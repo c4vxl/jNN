@@ -56,7 +56,7 @@ public class DataUtils {
      * @param cut Defines if the data should be cut if it already was longer than `targetLength`
      */
     public static <T> T[] padRight(T[] data, T padWith, int targetLength, boolean cut) {
-        if (!cut && data.length < targetLength)
+        if (!cut && data.length > targetLength)
             return data;
 
         T[] result = Arrays.copyOfRange(data, 0, targetLength);

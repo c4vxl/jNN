@@ -283,10 +283,30 @@ public class Tensor<T> {
     public Tensor<T> get(Integer... idx) {
         // points to a direct item
         if (idx.length == this.shape.rank() && !Arrays.stream(idx).toList().contains(null))
-            return Tensor.of(this.data[TensorUtils.flatIndex(this.shape.dimensions, DataUtils.intIndex(idx))]);
+            return Tensor.of(this.item(DataUtils.intIndex(idx)));
 
         // points to a slice
         return TensorUtils.index(this, idx);
+    }
+
+    /**
+     * Get a raw item at a position in the tensor
+     * @param idx The index of the item. Can be flat or multidimensional.
+     */
+    public T item(int... idx) { return this.item(this.dtype, idx); }
+
+    /**
+     * Get a raw item at a position in the tensor
+     * @param idx The index of the item. Can be flat or multidimensional.
+     * @param dtype The dtype to return the value in
+     */
+    public <R> R item(DType<R> dtype, int... idx) {
+        int flat = idx.length == 1 ? idx[0] : TensorUtils.flatIndex(this.shape.dimensions, idx);
+
+        if (flat < 0 || flat > this.size())
+            throw new IndexOutOfBoundsException("Invalid index for shape " + this.shape + ".");
+
+        return dtype.parse(this.data[flat]);
     }
 
     /**
@@ -428,7 +448,115 @@ public class Tensor<T> {
      */
     public int[] indexOf_md(T obj) { return TensorUtils.unravelIndex(this.shape.dimensions, this.indexOf(obj)); }
 
+    /**
+     * Reduce a specific dimension by summing its values
+     * @param dim The dimension to sum over
+     * @param keepDim Should the summed dimension be removed?
+     *                More information at `TensorUtils.reduceAlongDimension`
+     */
+    public Tensor<T> sum(int dim, boolean keepDim) { return TensorUtils.reduceAlongDimension(this, dim, Tensor::add, keepDim); }
 
+    /**
+     * Reduce a specific dimension by averaging its values
+     * @param dim The dimension to average over
+     * @param keepDim Should the averaged dimension be removed?
+     *                More information at `TensorUtils.reduceAlongDimension`
+     */
+    public Tensor<T> mean(int dim, boolean keepDim) { return this.sum(dim, keepDim).div(this.dtype.parse(this.size(dim))); }
+
+    /**
+     * Transposes the last two dimensions of the Tensor
+     */
+    public Tensor<T> T() { return this.transpose(-1, -2); }
+
+    /**
+     * Creates a transposed version of the Tensor where the dimensions `dim0` and `dim1` are swapped
+     * @param dim0 The dimension to swap with `dim1`
+     * @param dim1 The dimension to swap with `dim0`
+     */
+    public Tensor<T> transpose(int dim0, int dim1) {
+        dim0 = DataUtils.handleNegativeIndexing(this.shape.dimensions, dim0);
+        dim1 = DataUtils.handleNegativeIndexing(this.shape.dimensions, dim1);
+
+        int[] newShape = this.shape.dimensions.clone();
+        newShape[dim0] = this.size(dim1);
+        newShape[dim1] = this.size(dim0);
+
+        Tensor<T> result = this.clone().reshape(newShape);
+
+        for (int i = 0; i < this.size(); i++) {
+            int[] indices = TensorUtils.unravelIndex(this.shape.dimensions, i);
+            int tempIndex = indices[dim0];
+            indices[dim0] = indices[dim1];
+            indices[dim1] = tempIndex;
+
+            result.set(this.item(i), indices);
+        }
+
+        return result;
+    }
+
+    /**
+     * Perform matrix multiplication over the last two dimensions of this tensor with another one
+     * @param b The second Tensor
+     */
+    public Tensor<T> matmul(Tensor<T> b) {
+        Tensor<T> a = this;
+
+        boolean wasA1D = false, wasB1D = false;
+        if (a.shape.rank() == 1) {
+            a = a.unsqueeze(0);
+            wasA1D = true;
+        }
+        if (b.shape.rank() == 1) {
+            b = b.unsqueeze(0);
+            wasB1D = true;
+        }
+
+        int aRows = a.size(-2);
+        int aCols = a.size(-1);
+        int bCols = b.size(-1);
+
+        // pad a and b to same rank
+        int length = Math.max(a.shape.rank(), b.shape.rank());
+        a = a.reshape(TensorUtils.padShapeLeft(length, false, a.shape.dimensions));
+        b = b.reshape(TensorUtils.padShapeLeft(length, false, b.shape.dimensions));
+
+        // calculate broadcasted batch shape
+        int[] batchShape = BroadcastingUtils.broadcastShapes(
+                Arrays.copyOfRange(a.shape.dimensions, 0, a.shape.rank() - 2),
+                Arrays.copyOfRange(b.shape.dimensions, 0, b.shape.rank() - 2)
+        );
+        int[] resultShape = Arrays.copyOfRange(batchShape, 0, batchShape.length + 2);
+        resultShape[resultShape.length - 2] = aRows;
+        resultShape[resultShape.length - 1] = bCols;
+        Tensor<T> result = new Tensor<>(this.dtype, resultShape);
+
+        // perform matrix multiplication
+        for (int[] batchIndices : TensorUtils.calculatePossibleIndices(batchShape)) {
+            Tensor<T> aSlice = a.get(DataUtils.IntegerIndex(batchIndices));
+            Tensor<T> bSlice = b.get(DataUtils.IntegerIndex(batchIndices));
+            Tensor<T> sliceResult = new Tensor<>(this.dtype, aRows, bCols);
+
+            // perform matmul for this slice
+            for (int i = 0; i < aRows; i++) {
+                for (int j = 0; j < bCols; j++) {
+                    // calculate dot product for result[..., i, j]
+                    double sum = 0;
+                    for (int k = 0; k < aCols; k++)
+                        sum = sum + aSlice.item(DType.DOUBLE, i, k) * bSlice.item(DType.DOUBLE, k, j);
+
+                    sliceResult.set(this.dtype.parse(sum), i, j);
+                }
+            }
+
+            result.set(sliceResult, DataUtils.IntegerIndex(batchIndices));
+        }
+
+        if (wasA1D) result = result.squeeze(0);
+        if (wasB1D) result = result.squeeze(-1);
+        return result;
+    }
 
     @Override
     public Tensor<T> clone() {
