@@ -239,4 +239,62 @@ public class TensorUtils {
 
         return result;
     }
+
+    /**
+     * Perform matrix multiplication by splitting booth matrices into smaller blocks
+     * @param a The first matrix
+     * @param b The second matrix
+     * @param result The container for the result
+     * @param aRows Amount of rows in Tensor a (set to a.size(-2))
+     * @param aCols Amount of columns in Tensor a (set to a.size(-1))
+     * @param bCols Amount of columns in Tensor b (set to b.size(-1))
+     * @param startRowA The starting point of the current batch (set to 0)
+     * @param startColA The starting point of the current batch (set to 0)
+     * @param startRowB The starting point of the current batch (set to 0)
+     * @param startColB The starting point of the current batch (set to 0)
+     * @param blockSize The size of the blocks
+     */
+    public static <T> void performBlockMultiplication(Tensor<T> a, Tensor<T> b, Tensor<T> result,
+                                                      int aRows, int aCols, int bCols,
+                                                      int startRowA, int startColA, int startRowB, int startColB,
+                                                      int blockSize) {
+        // base case: a and b are at block size -> multiply them
+        if (aRows <= blockSize || aCols <= blockSize || bCols <= blockSize) {
+            int[] batchShape = Arrays.copyOfRange(result.shape.dimensions, 0, result.shape.rank() - 2);
+
+            for (int[] batchIndices : TensorUtils.calculatePossibleIndices(batchShape)) {
+                Tensor<T> aSlice = a.get(DataUtils.IntegerIndex(batchIndices));
+                Tensor<T> bSlice = b.get(DataUtils.IntegerIndex(batchIndices));
+                Tensor<T> sliceResult = new Tensor<>(a.dtype, aRows, bCols);
+
+                // perform matmul for this slice
+                for (int i = 0; i < aRows; i++) {
+                    for (int j = 0; j < bCols; j++) {
+                        // calculate dot product for result[..., i, j]
+                        double sum = 0;
+                        for (int k = 0; k < aCols; k++)
+                            sum = sum + aSlice.item(DType.DOUBLE, i, k) * bSlice.item(DType.DOUBLE, k, j);
+
+                        sliceResult.set(a.dtype.parse(sum), i, j);
+                    }
+                }
+
+                result.set(sliceResult, DataUtils.IntegerIndex(batchIndices));
+            }
+
+            return;
+        }
+
+        // or continue splitting them into smaller blocks
+
+        int halfARows = aRows / 2;
+        int halfACols = aCols / 2;
+        int halfBCols = aCols / 2;
+
+        // perform recursive block multiplication
+        performBlockMultiplication(a, b, result, halfARows, halfACols, halfBCols, startRowA, startColA, startRowB, startColB, blockSize);
+        performBlockMultiplication(a, b, result, halfARows, halfACols, halfBCols, startRowA, startColA + halfACols, startRowB + halfACols, startColB, blockSize);
+        performBlockMultiplication(a, b, result, halfARows, halfACols, halfBCols, startRowA + halfARows, startColA, startRowB, startColB + halfBCols, blockSize);
+        performBlockMultiplication(a, b, result, halfARows, halfACols, halfBCols, startRowA + halfARows, startColA + halfACols, startRowB + halfACols, startColB + halfBCols, blockSize);
+    }
 }

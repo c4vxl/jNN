@@ -32,7 +32,7 @@ public class DataUtils {
     public static Integer[] handleNegativeIndexing(int[] dimensions, Integer[] idx) {
         for (int i = 0; i < dimensions.length; i++)
             if (idx[i] != null)
-                idx[i] = idx[i] >= 0 ? idx[i] : dimensions.length + idx[i];
+                idx[i] = idx[i] >= 0 ? idx[i] : dimensions[i] + idx[i];
         return idx;
     }
 

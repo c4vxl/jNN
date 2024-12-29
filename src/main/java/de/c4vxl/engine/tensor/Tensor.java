@@ -301,9 +301,13 @@ public class Tensor<T> {
      * @param dtype The dtype to return the value in
      */
     public <R> R item(DType<R> dtype, int... idx) {
-        int flat = idx.length == 1 ? idx[0] : TensorUtils.flatIndex(this.shape.dimensions, idx);
+        boolean isValid = idx.length == this.shape.rank();
 
-        if (flat < 0 || flat > this.size())
+        int flat = -1;
+        if (isValid)
+            flat = TensorUtils.flatIndex(this.shape.dimensions, idx);
+
+        if (!isValid || flat < 0 || flat > this.size())
             throw new IndexOutOfBoundsException("Invalid index for shape " + this.shape + ".");
 
         return dtype.parse(this.data[flat]);
@@ -533,25 +537,8 @@ public class Tensor<T> {
         Tensor<T> result = new Tensor<>(this.dtype, resultShape);
 
         // perform matrix multiplication
-        for (int[] batchIndices : TensorUtils.calculatePossibleIndices(batchShape)) {
-            Tensor<T> aSlice = a.get(DataUtils.IntegerIndex(batchIndices));
-            Tensor<T> bSlice = b.get(DataUtils.IntegerIndex(batchIndices));
-            Tensor<T> sliceResult = new Tensor<>(this.dtype, aRows, bCols);
-
-            // perform matmul for this slice
-            for (int i = 0; i < aRows; i++) {
-                for (int j = 0; j < bCols; j++) {
-                    // calculate dot product for result[..., i, j]
-                    double sum = 0;
-                    for (int k = 0; k < aCols; k++)
-                        sum = sum + aSlice.item(DType.DOUBLE, i, k) * bSlice.item(DType.DOUBLE, k, j);
-
-                    sliceResult.set(this.dtype.parse(sum), i, j);
-                }
-            }
-
-            result.set(sliceResult, DataUtils.IntegerIndex(batchIndices));
-        }
+        TensorUtils.performBlockMultiplication(a, b, result, aRows, aCols, bCols,
+                0, 0, 0, 0, 32);
 
         if (wasA1D) result = result.squeeze(0);
         if (wasB1D) result = result.squeeze(-1);

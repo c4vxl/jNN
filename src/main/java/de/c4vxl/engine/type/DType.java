@@ -1,6 +1,5 @@
 package de.c4vxl.engine.type;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Objects;
 import java.util.Random;
 
@@ -39,6 +38,10 @@ public class DType<T> {
         // round to next full integer if target is DType.INTEGER
         if (dtype.equals(INTEGER))
             return (T) Integer.valueOf((int) Math.round(DType.DOUBLE.parse(obj)));
+
+        // round to next full integer if target is DType.LONG
+        if (dtype.equals(LONG))
+            return (T) Long.valueOf(DType.INTEGER.parse(obj));
 
         // check if int representation is larger than 0 in case of DType.BOOLEAN
         if (dtype.equals(BOOLEAN))
