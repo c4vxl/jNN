@@ -72,6 +72,10 @@ public class TensorUtils {
         return DataUtils.intIndex(DataUtils.padLeft(DataUtils.IntegerIndex(shape), 1, targetLength, cut));
     }
 
+    /**
+     * Calculates all possible ways to index into a multidimensional shape
+     * @param shape The shape
+     */
     public static int[][] calculatePossibleIndices(int[] shape) {
         int[][] combinations = new int[TensorUtils.shapeToSize(shape)][shape.length];
         for (int i = 0; i < combinations.length; i++)
@@ -151,13 +155,21 @@ public class TensorUtils {
      * @param dimensions The indices (int for specific dimension, "null" for selecting all elements across the dimension)
      *                   Missing dimensions will be padded with "null"-values
      */
-    public static <T> Tensor<T> index(Tensor<T> tensor, Integer... dimensions) {
+    public static <T> Tensor<T> index(Tensor<T> tensor, Integer... dimensions) { return index(tensor, false, dimensions); }
+
+    /**
+     * Extract a slice out of a tensor based on given indices
+     * @param tensor The tensor to extract from
+     * @param dimensions The indices (int for specific dimension, "null" for selecting all elements across the dimension)
+     *                   Missing dimensions will be padded with "null"-values
+     * @param keepDims If a slice has empty dimensions and this value is set to "false", they will be removed
+     */
+    public static <T> Tensor<T> index(Tensor<T> tensor, boolean keepDims, Integer... dimensions) {
         if (dimensions.length > tensor.shape.rank())
             throw new IndexOutOfBoundsException("Number of dimensions exceeds the tensor rank. (" + dimensions.length + " > " + tensor.shape.rank() + ")");
 
-
-        dimensions = DataUtils.padRight(dimensions, null, tensor.shape.dimensions.length, false);
-        dimensions = DataUtils.handleNegativeIndexing(tensor.shape.dimensions, dimensions);
+        dimensions = DataUtils.handleNegativeIndexing(tensor.shape.dimensions,
+                DataUtils.padRight(dimensions, null, tensor.shape.dimensions.length, false));
 
         Tensor<T> result = Tensor.empty(TensorUtils.calculateSliceShape(tensor, dimensions))
                 .asDType(tensor.dtype);
@@ -173,7 +185,10 @@ public class TensorUtils {
             result.data[resultFlatIndex] = tensor.data[flatIndex(tensor.shape.dimensions, inputIdx)];
         }
 
-        return result.squeeze();
+        if (!keepDims)
+            result = result.squeeze();
+
+        return result;
     }
 
     /**
@@ -263,8 +278,8 @@ public class TensorUtils {
             int[] batchShape = Arrays.copyOfRange(result.shape.dimensions, 0, result.shape.rank() - 2);
 
             for (int[] batchIndices : TensorUtils.calculatePossibleIndices(batchShape)) {
-                Tensor<T> aSlice = a.get(DataUtils.IntegerIndex(batchIndices));
-                Tensor<T> bSlice = b.get(DataUtils.IntegerIndex(batchIndices));
+                Tensor<T> aSlice = TensorUtils.index(a, true, DataUtils.IntegerIndex(batchIndices));;
+                Tensor<T> bSlice = TensorUtils.index(b, true, DataUtils.IntegerIndex(batchIndices));;
                 Tensor<T> sliceResult = new Tensor<>(a.dtype, aRows, bCols);
 
                 // perform matmul for this slice

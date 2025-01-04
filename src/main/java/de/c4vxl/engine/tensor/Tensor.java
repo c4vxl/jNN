@@ -494,7 +494,7 @@ public class Tensor<T> {
             indices[dim0] = indices[dim1];
             indices[dim1] = tempIndex;
 
-            result.set(this.item(i), indices);
+            result.set(this.data[i], indices);
         }
 
         return result;
@@ -538,7 +538,7 @@ public class Tensor<T> {
 
         // perform matrix multiplication
         TensorUtils.performBlockMultiplication(a, b, result, aRows, aCols, bCols,
-                0, 0, 0, 0, 32);
+                0, 0, 0, 0, 16);
 
         if (wasA1D) result = result.squeeze(0);
         if (wasB1D) result = result.squeeze(-1);
