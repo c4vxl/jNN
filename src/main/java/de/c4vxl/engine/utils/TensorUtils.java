@@ -10,6 +10,36 @@ import java.util.function.BiFunction;
 
 public class TensorUtils {
     /**
+     * Fill the lower left triangle from a 2d tensor with a new value
+     * @param tensor The tensor
+     * @param newVal The new value
+     */
+    public static <T> Tensor<T> tril(Tensor<T> tensor, Object newVal) {
+        if (tensor.shape.rank() != 2)
+            throw new IllegalArgumentException("The tril operation only supports 2d tensors!");
+
+        int rows = tensor.size(0);
+        int cols = tensor.size(1);
+
+        for (int i = 0; i < rows; i++)
+            for (int j = i + 1; j < cols; j++)
+                tensor.data[i * cols + j] = tensor.dtype.parse(newVal);
+
+        return tensor;
+    }
+
+    /**
+     * Applies a mask on a tensor
+     * @param tensor The tensor to apply the mask onto
+     * @param mask The mask to apply
+     * @param checkFor The value in the mask to replace
+     * @param value The value to replace masked items with
+     */
+    public static <T, R> Tensor<T> maskedFill(Tensor<T> tensor, Tensor<R> mask, Double checkFor, Double value) {
+        return elementWise(tensor, mask.broadcastTo(tensor), (a, b) -> b.equals(checkFor) ? value : a);
+    }
+
+    /**
      * Returns a Tensor with all it's values filled with a specified value
      * @param tensor The tensor
      * @param obj The object to fill the tensors data with
@@ -27,11 +57,12 @@ public class TensorUtils {
      * @param operation The operation to perform. Format: (elementA, elementB) -> result
      */
     public static <T> Tensor<T> elementWise(Tensor<T> a, Tensor<?> b, BiFunction<Double, Double, Double> operation) {
-        if (!a.shape.equals(b.shape))
+        if (!a.shape.equals(b.shape)) {
             b = b.broadcastTo(a);
+        }
 
-        if (!a.shape.equals(b.shape))
-            throw new IllegalArgumentException("Tensors a and b must be the same shape for element wise operations!");
+//        if (!a.shape.equals(b.shape))
+//            throw new IllegalArgumentException("Tensors a and b must be the same shape for element wise operations!");
 
         Tensor<?> finalB = b;
         return TensorUtils.elementWise(a.clone(), (elementA, index) ->
@@ -150,12 +181,102 @@ public class TensorUtils {
     }
 
     /**
-     * Extract a slice out of a tensor based on given indices
-     * @param tensor The tensor to extract from
-     * @param dimensions The indices (int for specific dimension, "null" for selecting all elements across the dimension)
-     *                   Missing dimensions will be padded with "null"-values
+     * Returns a narrowed version of the input tensor. The dimension dim is going to be the size (start...(start + length)).
+     * @param tensor The input tensor
+     * @param dim The dimension to narrow over
+     * @param start The starting point
+     * @param length The length of the narrowed window
      */
-    public static <T> Tensor<T> index(Tensor<T> tensor, Integer... dimensions) { return index(tensor, false, dimensions); }
+    public static <T> Tensor<T> narrow(Tensor<T> tensor, int dim, int start, int length) {
+        dim = DataUtils.handleNegativeIndexing(tensor.shape.dimensions, dim);
+
+        if (dim < 0 || dim >= tensor.shape.rank())
+            throw new IndexOutOfBoundsException("Invalid dimension!");
+
+        if (tensor.size(dim) < start + length || start < 0)
+            throw new IndexOutOfBoundsException("Start index and length are out of bounds.");
+
+        int[] newShape = tensor.shape.dimensions.clone();
+        newShape[dim] = length;
+
+        Tensor<T> result = new Tensor<>(tensor.dtype, newShape);
+        for (int i = 0; i < result.size(); i++) {
+            int[] idx = unravelIndex(result.shape.dimensions, i);
+            idx[dim] += start;
+            result.data[i] = tensor.data[flatIndex(tensor.shape.dimensions, idx)];
+        }
+        return result;
+    }
+
+    /**
+     * Set a narrowed slice of the input tensor.
+     * @param tensor The input tensor
+     * @param dim The dimension to narrow over
+     * @param start The starting point
+     * @param slice The narrowed version to put in
+     */
+    public static <T> Tensor<T> narrow_set(Tensor<T> tensor, Tensor<T> slice, int dim, int start) {
+        dim = DataUtils.handleNegativeIndexing(tensor.shape.dimensions, dim);
+
+        if (dim < 0 || dim >= tensor.shape.rank())
+            throw new IndexOutOfBoundsException("Invalid dimension!");
+        if (start < 0 || tensor.size(dim) <= start)
+            throw new IndexOutOfBoundsException("Start index is out of bounds.");
+
+        if (slice.size(dim) != tensor.size(dim) - start)
+            throw new IllegalArgumentException("Invalid slice length!");
+
+        Tensor<T> result = tensor.clone();
+
+        for (int i = 0; i < slice.data.length; i++) {
+            int[] targetIdx = unravelIndex(slice.shape.dimensions, i);
+            targetIdx[dim] += start;
+            result = result.set(slice.data[i], targetIdx);
+        }
+
+        return result;
+    }
+
+    /**
+     * Splits the tensor into chunks with individual sizes
+     * @param tensor The tensor to split
+     * @param dim The dimension to split over
+     * @param chunkSizes The size for each chunk
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> Tensor<T>[] split(Tensor<T> tensor, int dim, int... chunkSizes) {
+        if (Arrays.stream(chunkSizes).reduce(0, Integer::sum) != tensor.size(dim))
+            throw new IllegalArgumentException("Chunk sizes don't add up to the size of the dimension!");
+        
+        Tensor<T>[] output = (Tensor<T>[]) new Tensor[chunkSizes.length];
+
+        int start = 0;
+        for (int i = 0; i < chunkSizes.length; i++) {
+            output[i] = tensor.narrow(dim, start, chunkSizes[i]);
+
+            start += chunkSizes[i];
+        }
+        
+        return output;
+    }
+
+    /**
+     * Split tensor into equally sized chunks of fixed size.
+     * If the tensor size along the given dimension `dim` is not divisible by chunks, the last chunk will be the size of (dimSize % chunkSize).
+     * @param tensor The tensor to chunk
+     * @param dim The dimension to chunk over
+     * @param chunkSize The size of each chunk
+     */
+    public static <T> Tensor<T>[] chunk(Tensor<T> tensor, int dim, int chunkSize) {
+        int dimSize = tensor.size(dim);
+
+        int[] chunkSizes = new int[(dimSize + chunkSize - 1) / chunkSize];
+        chunkSizes[chunkSizes.length - 1] = (dimSize % chunkSize == 0) ? chunkSize : dimSize % chunkSize; // manually calculate last chunk
+        for (int i = 0; i < chunkSizes.length - 1; i++)
+            chunkSizes[i] = chunkSize;
+
+        return TensorUtils.split(tensor, dim, chunkSizes);
+    }
 
     /**
      * Extract a slice out of a tensor based on given indices
@@ -164,7 +285,7 @@ public class TensorUtils {
      *                   Missing dimensions will be padded with "null"-values
      * @param keepDims If a slice has empty dimensions and this value is set to "false", they will be removed
      */
-    public static <T> Tensor<T> index(Tensor<T> tensor, boolean keepDims, Integer... dimensions) {
+    public static <T> Tensor<T> getSlice(Tensor<T> tensor, boolean keepDims, Integer... dimensions) {
         if (dimensions.length > tensor.shape.rank())
             throw new IndexOutOfBoundsException("Number of dimensions exceeds the tensor rank. (" + dimensions.length + " > " + tensor.shape.rank() + ")");
 
@@ -198,7 +319,7 @@ public class TensorUtils {
      *                   Missing dimensions will be padded with "null"-values
      * @param slice The slice to put in
      */
-    public static <T> Tensor<T> index_put(Tensor<T> tensor, Tensor<T> slice, Integer... dimensions) {
+    public static <T> Tensor<T> setSlice(Tensor<T> tensor, Tensor<T> slice, Integer... dimensions) {
         if (dimensions.length > tensor.shape.rank())
             throw new IndexOutOfBoundsException("Number of dimensions exceeds the tensor rank. (" + dimensions.length + " > " + tensor.shape.rank() + ")");
 
@@ -278,9 +399,15 @@ public class TensorUtils {
             int[] batchShape = Arrays.copyOfRange(result.shape.dimensions, 0, result.shape.rank() - 2);
 
             for (int[] batchIndices : TensorUtils.calculatePossibleIndices(batchShape)) {
-                Tensor<T> aSlice = TensorUtils.index(a, true, DataUtils.IntegerIndex(batchIndices));;
-                Tensor<T> bSlice = TensorUtils.index(b, true, DataUtils.IntegerIndex(batchIndices));;
+                Tensor<T> aSlice = TensorUtils.getSlice(a, false, DataUtils.IntegerIndex(batchIndices));
+                Tensor<T> bSlice = TensorUtils.getSlice(b, false, DataUtils.IntegerIndex(batchIndices));
                 Tensor<T> sliceResult = new Tensor<>(a.dtype, aRows, bCols);
+                if (aSlice.shape.rank() == 0)
+                    aSlice = aSlice.unsqueeze(0).unsqueeze(0);
+                if (aSlice.shape.rank() == 1)
+                    aSlice = aSlice.unsqueeze(0);
+                if (bSlice.shape.rank() == 1)
+                    bSlice = bSlice.unsqueeze(1);
 
                 // perform matmul for this slice
                 for (int i = 0; i < aRows; i++) {

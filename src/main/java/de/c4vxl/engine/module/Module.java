@@ -1,10 +1,6 @@
 package de.c4vxl.engine.module;
 
 import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.json.JettisonMappedXmlDriver;
-import com.thoughtworks.xstream.io.json.JsonHierarchicalStreamDriver;
-import com.thoughtworks.xstream.security.NoTypePermission;
-import com.thoughtworks.xstream.security.TypePermission;
 import de.c4vxl.engine.utils.SerializationUtils;
 
 import java.io.File;

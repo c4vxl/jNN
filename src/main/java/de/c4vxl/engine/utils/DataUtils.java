@@ -22,7 +22,10 @@ public class DataUtils {
      * @param data The data to index into
      * @param idx The index into the dimensions
      */
-    public static int handleNegativeIndexing(int[] data, int idx) { return idx < 0 ? data.length + idx : idx; }
+    public static int handleNegativeIndexing(int[] data, int idx) {
+        if (idx < 0) return (data.length + (idx % data.length)) % data.length;
+        return idx;
+    }
 
     /**
      * Convert a negative multidimensional index into it's positive values
@@ -31,8 +34,8 @@ public class DataUtils {
      */
     public static Integer[] handleNegativeIndexing(int[] dimensions, Integer[] idx) {
         for (int i = 0; i < dimensions.length; i++)
-            if (idx[i] != null)
-                idx[i] = idx[i] >= 0 ? idx[i] : dimensions[i] + idx[i];
+            if (idx[i] != null && idx[i] < 0)
+                idx[i] = (dimensions[i] + (idx[i] % dimensions[i])) % dimensions[i];
         return idx;
     }
 

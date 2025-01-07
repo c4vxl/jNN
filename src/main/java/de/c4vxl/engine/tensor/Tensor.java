@@ -273,6 +273,23 @@ public class Tensor<T> {
     public Tensor<T> broadcastTo(Tensor<?> other) { return this.broadcastTo(other.shape.dimensions); }
 
     /**
+     * Returns a narrowed version of this tensor.
+     * See TensorUtils.narrow
+     * @param dim The dimension to narrow over
+     * @param start The starting point
+     * @param length The length of the narrowed window
+     */
+    public Tensor<T> narrow(int dim, int start, int length) { return TensorUtils.narrow(this, dim, start, length); }
+
+    /**
+     * Set a narrowed slice of this tensor
+     * @param dim The dimension to narrow over
+     * @param start The starting point
+     * @param slice The narrowed version to put in
+     */
+    public Tensor<T> setNarrow(Tensor<T> slice, int dim, int start) { return TensorUtils.narrow_set(this, slice, dim, start); }
+
+    /**
      * Index into the Tensors data with a multidimensional index
      * more information about indexing at `TensorUtils.index`
      *
@@ -286,7 +303,7 @@ public class Tensor<T> {
             return Tensor.of(this.item(DataUtils.intIndex(idx)));
 
         // points to a slice
-        return TensorUtils.index(this, idx);
+        return TensorUtils.getSlice(this, false, idx);
     }
 
     /**
@@ -320,7 +337,7 @@ public class Tensor<T> {
      * @param idx The index. If it points to a direct element, the element will be set to obj.item(),
      *            if it points to a slice, the slice will be filled with obj
      */
-    public Tensor<T> set(Tensor<T> obj, Integer... idx) { return TensorUtils.index_put(this, obj, idx); }
+    public Tensor<T> set(Tensor<T> obj, Integer... idx) { return TensorUtils.setSlice(this, obj, idx); }
 
     /**
      * Set an object in the tensors data
@@ -467,6 +484,17 @@ public class Tensor<T> {
      *                More information at `TensorUtils.reduceAlongDimension`
      */
     public Tensor<T> mean(int dim, boolean keepDim) { return this.sum(dim, keepDim).div(this.dtype.parse(this.size(dim))); }
+
+    /**
+     * Compute the variance over a dimension
+     * @param dim The dimension
+     * @param keepDim Should the averaged dimension be removed?
+     *                More information at `TensorUtils.reduceAlongDimension`
+     */
+    public Tensor<T> variance(int dim, boolean keepDim) {
+        Tensor<T> a = this.sub(this.mean(dim, keepDim));
+        return a.mul(a.clone()).sum(-1, keepDim).div(this.dtype.parse(this.size(-1)));
+    }
 
     /**
      * Transposes the last two dimensions of the Tensor
