@@ -35,28 +35,28 @@ public class Module {
     }
 
     /**
-     * Convert this module into it's json representation
+     * Convert this module into it's xml representation
      */
-    public String asJson() {
-        XStream xStream = new XStream(new JettisonMappedXmlDriver());
+    public String asXML() {
+        XStream xStream = new XStream();
         xStream.setMode(XStream.NO_REFERENCES);
         return xStream.toXML(this);
     }
 
     /**
-     * Load this modules state from a json string
-     * @param json The json
+     * Load this modules state from a xml string
+     * @param xml The XML
      */
     @SuppressWarnings("unchecked")
-    public static <T extends Module> T fromJson(String json) {
-        XStream xStream = new XStream(new JettisonMappedXmlDriver());
+    public static <T extends Module> T fromXML(String xml) {
+        XStream xStream = new XStream();
         xStream.setMode(XStream.NO_REFERENCES);
         xStream.allowTypesByWildcard(new String[] {
                 "de.c4vxl.**",
                 "java.lang.**",
                 "java.util.**"
         });
-        return (T) xStream.fromXML(json);
+        return (T) xStream.fromXML(xml);
     }
 
     /**
@@ -78,7 +78,7 @@ public class Module {
             file.setWritable(true);
 
             // write json
-            Files.writeString(file.toPath(), this.asJson());
+            Files.writeString(file.toPath(), this.asXML());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -100,11 +100,19 @@ public class Module {
 
         // load from file
         try {
-            return Module.fromJson(Files.readString(file.toPath()));
+            return Module.fromXML(Files.readString(file.toPath()));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * Load this module from a file
+     * @param path The path to the file
+     * @param type The module type
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T load(String path, Class<T> type) { return (T) Module.load(path); }
 
     /**
      * Try to find and invoke a forward function
