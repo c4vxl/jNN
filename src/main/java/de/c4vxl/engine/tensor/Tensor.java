@@ -16,6 +16,11 @@ public class Tensor<T> {
     public DType<T> dtype;
 
     /**
+     * Get the amount of dimensions in the Tensor
+     */
+    public int dim() { return this.shape.rank(); }
+
+    /**
      * Get the size of this Tensors data
      */
     public int size() { return this.shape.size(); }
@@ -230,6 +235,7 @@ public class Tensor<T> {
     public Tensor<T> squeeze() {
         List<Integer> shape = new ArrayList<>(Arrays.stream(this.shape.dimensions).boxed().toList());
         shape.removeIf((x) -> x == 1);
+        if (shape.isEmpty()) shape.add(1);
         return this.reshape(shape.stream().mapToInt(Integer::intValue).toArray());
     }
 

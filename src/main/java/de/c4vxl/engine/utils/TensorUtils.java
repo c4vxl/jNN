@@ -2,6 +2,7 @@ package de.c4vxl.engine.utils;
 
 import de.c4vxl.engine.tensor.Tensor;
 import de.c4vxl.engine.type.DType;
+import de.c4vxl.engine.type.Shape;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -279,6 +280,38 @@ public class TensorUtils {
     }
 
     /**
+     * Concatenate a sequence of tensors along a new dimension
+     * @param dim The index of where to add a dimension
+     * @param tensors The tensors to stack
+     */
+    @SafeVarargs
+    public static <T> Tensor<T> stack(int dim, Tensor<T>... tensors) {
+        if (tensors.length == 0)
+            throw new IllegalArgumentException("Must have at least one tensor.");
+
+        Shape shape = tensors[0].shape;
+        dim = DataUtils.handleNegativeIndexing(Arrays.copyOfRange(shape.dimensions, 0, shape.rank() + 1), dim);
+
+        if (shape.rank() < dim)
+            throw new IllegalArgumentException("Invalid dimension!");
+
+        if (!Arrays.stream(tensors).allMatch(a -> a.shape.equals(shape)))
+            throw new IllegalArgumentException("All tensors must be of the same shape!");
+
+        List<Integer> newShape = new ArrayList<>(Arrays.stream(shape.dimensions).boxed().toList());
+        newShape.add(dim, tensors.length);
+
+        Tensor<T> result = new Tensor<>(tensors[0].dtype, newShape.stream().mapToInt(Integer::intValue).toArray());
+        Integer[] index = new Integer[result.dim()];
+        for (int i = 0; i < tensors.length; i++) {
+            index[dim] = i;
+            TensorUtils.setSlice(result, tensors[i].unsqueeze(0), index);
+        }
+
+        return result;
+    }
+
+    /**
      * Extract a slice out of a tensor based on given indices
      * @param tensor The tensor to extract from
      * @param dimensions The indices (int for specific dimension, "null" for selecting all elements across the dimension)
@@ -329,7 +362,7 @@ public class TensorUtils {
         // add batch dimensions back to slice
         int[] sliceShape = TensorUtils.calculateSliceShape(tensor, dimensions);
         if (TensorUtils.shapeToSize(sliceShape) != slice.size())
-            throw new IllegalArgumentException("Invalid slice shape!");
+            throw new IllegalArgumentException("Invalid slice shape! Expected " + Arrays.toString(sliceShape) + "!");
         slice = slice.reshape(sliceShape);
 
         // populate result tensor

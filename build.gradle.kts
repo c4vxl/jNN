@@ -11,5 +11,4 @@ repositories {
 
 dependencies {
     implementation("com.thoughtworks.xstream:xstream:1.4.21")
-    implementation("org.codehaus.jettison:jettison:1.5.4")
 }
