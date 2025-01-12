@@ -41,8 +41,8 @@ public abstract class TextGenerationModel extends Module {
                 logits = logits.unsqueeze(0);
 
             // get next token
-            logits = TensorUtils.getSlice(logits, false, null, -1).div(input_ids.dtype.parse(temperature));
-            logits = ActivationFunction.Softmax(logits, temperature, -1);
+            logits = logits.div(input_ids.dtype.parse(temperature));
+            logits = ActivationFunction.Softmax(logits, temperature, 0);
             Integer nextToken = TensorUtils.multinomial(logits, 1).squeeze().item(0);
 
             if (stream != null)
