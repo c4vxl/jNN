@@ -87,14 +87,13 @@ public class LSTM extends Module {
     }
 
     public ArrayList<LSTMCell> cells;
-    public int num_layers, hidden_size, input_size, proj_size;
+    public int num_layers, hidden_size, input_size;
     protected ArrayList<Tensor<Double>> last_hx = null;
 
-    public LSTM(int input_size, int hidden_size, int num_layers, int proj_size, boolean bias, DType<?> dtype) {
+    public LSTM(int input_size, int hidden_size, int num_layers, boolean bias, DType<?> dtype) {
         this.num_layers = num_layers;
         this.hidden_size = hidden_size;
         this.input_size = input_size;
-        this.proj_size = proj_size;
 
         this.cells = new ArrayList<>(List.of(new LSTMCell(input_size, hidden_size, bias, dtype)));
         for (int i = 0; i < num_layers; i++) {
@@ -102,10 +101,10 @@ public class LSTM extends Module {
         }
     }
 
-    public <T> LSTMOutput<T> forward(Tensor<T> input) {
+    public <T> Tensor<T> forward(Tensor<T> input) {
         LSTMOutput<T> out = this.forward(input, last_hx);
         this.last_hx = new ArrayList<>(out.hx);
-        return out;
+        return out.result;
     }
     @SuppressWarnings("unchecked")
     public <T> LSTMOutput<T> forward(Tensor<T> input, List<Tensor<Double>> hidden) {

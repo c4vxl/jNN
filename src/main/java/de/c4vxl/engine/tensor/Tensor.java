@@ -5,9 +5,13 @@ import de.c4vxl.engine.type.Shape;
 import de.c4vxl.engine.utils.BroadcastingUtils;
 import de.c4vxl.engine.utils.DataUtils;
 import de.c4vxl.engine.utils.TensorUtils;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
 
 import java.lang.reflect.Array;
+import java.nio.file.LinkPermission;
 import java.util.*;
+import java.util.stream.IntStream;
 
 @SuppressWarnings("unchecked")
 public class Tensor<T> {
@@ -184,8 +188,9 @@ public class Tensor<T> {
      */
     public <R> Tensor<R> asDType(DType<R> target) {
         R[] data = (R[]) Array.newInstance(target.clazz, this.size());
-        for (int i = 0; i < data.length; i++)
-            data[i] = target.parse(this.data[i]);
+
+        IntStream.range(0, data.length).parallel()
+                .forEach(i -> data[i] = target.parse(this.data[i]));
 
         return new Tensor<>(data.clone(), this.shape.dimensions.clone());
     }
@@ -551,28 +556,17 @@ public class Tensor<T> {
             wasB1D = true;
         }
 
-        int aRows = a.size(-2);
-        int aCols = a.size(-1);
-        int bCols = b.size(-1);
-
         // pad a and b to same rank
         int length = Math.max(a.shape.rank(), b.shape.rank());
         a = a.reshape(TensorUtils.padShapeLeft(length, false, a.shape.dimensions));
         b = b.reshape(TensorUtils.padShapeLeft(length, false, b.shape.dimensions));
 
-        // calculate broadcasted batch shape
-        int[] batchShape = BroadcastingUtils.broadcastShapes(
-                Arrays.copyOfRange(a.shape.dimensions, 0, a.shape.rank() - 2),
-                Arrays.copyOfRange(b.shape.dimensions, 0, b.shape.rank() - 2)
-        );
-        int[] resultShape = Arrays.copyOfRange(batchShape, 0, batchShape.length + 2);
-        resultShape[resultShape.length - 2] = aRows;
-        resultShape[resultShape.length - 1] = bCols;
-        Tensor<T> result = new Tensor<>(this.dtype, resultShape);
+        INDArray ndarray = Nd4j.matmul(Nd4j.createFromArray(a.asDouble().data).reshape(a.shape.dimensions),
+                Nd4j.createFromArray(b.asDouble().data).reshape(b.shape.dimensions));
 
-        // perform matrix multiplication
-        TensorUtils.performBlockMultiplication(a, b, result, aRows, aCols, bCols,
-                0, 0, 0, 0, 16);
+        Tensor<T> result = new Tensor<>(Arrays.stream(ndarray.data().asDouble()).boxed().toArray(Double[]::new),
+                Arrays.stream(ndarray.shape()).mapToInt(x -> (int) x).toArray())
+                .asDType(this.dtype);
 
         if (wasA1D) result = result.squeeze(0);
         if (wasB1D) result = result.squeeze(-1);

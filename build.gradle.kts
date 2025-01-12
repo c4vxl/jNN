@@ -11,4 +11,5 @@ repositories {
 
 dependencies {
     implementation("com.thoughtworks.xstream:xstream:1.4.21")
+    implementation("org.nd4j:nd4j-native-platform:1.0.0-M2.1")
 }

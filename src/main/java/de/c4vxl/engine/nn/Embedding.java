@@ -19,7 +19,11 @@ public class Embedding extends Module {
         this.weight = Tensor.ones(num_embeddings, embedding_dim).asDType(dtype);
     }
 
+    public static double totalEmbTime = 0;
+
     public <T> Tensor<T> forward(Tensor<T> x) {
+        double start = System.nanoTime();
+
         Integer[] indices = x.asInt().data;
 
         int[] newShape = Arrays.copyOf(x.shape.dimensions.clone(), x.shape.rank() + 1);
@@ -30,6 +34,8 @@ public class Embedding extends Module {
             Tensor<T> embedding = weight.get(indices[i]).asDType(result.dtype);
             result = result.set(embedding, 0, i, null);
         }
+
+        totalEmbTime += System.nanoTime() - start;
 
         return result;
     }

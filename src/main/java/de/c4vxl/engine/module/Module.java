@@ -120,7 +120,7 @@ public class Module {
                     .getMethod("forward", Arrays.stream(args).map(Object::getClass).toArray(Class[]::new))
                     .invoke(this, args);
         } catch (Exception e) {
-            System.err.println("No method for forwarding found!");
+            System.err.println("No method for forwarding found! (Module: " + this.getClass().getName() + ")");
             return null;
         }
     }

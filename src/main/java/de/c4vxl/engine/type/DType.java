@@ -33,7 +33,7 @@ public class DType<T> {
     @SuppressWarnings("unchecked")
     public static <T> T parse(DType<T> dtype, Object obj) {
         if (obj == null) return null; // null won't change
-        if (obj.getClass().isInstance(dtype.clazz)) return (T) obj; // return if obj is already target DType
+        if (dtype.clazz.isInstance(obj)) return (T) obj; // return if obj is already target DType
 
         // round to next full integer if target is DType.INTEGER
         if (dtype.equals(INTEGER))

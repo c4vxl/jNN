@@ -12,7 +12,7 @@ public class Linear extends Module {
     public Tensor<?> bias;
 
     public Linear(int in_features, int out_features) { this(in_features, out_features, true); }
-    public Linear(int in_features, int out_features, boolean bias) { this(in_features, out_features, true, DType.DEFAULT); }
+    public Linear(int in_features, int out_features, boolean bias) { this(in_features, out_features, bias, DType.DEFAULT); }
     public Linear(int in_features, int out_features, boolean bias, DType<?> dtype) {
         this.weight = Tensor.ones(in_features, out_features).asDType(dtype);
         this.bias = bias ? Tensor.zeros(out_features).asDType(dtype) : null;
