@@ -1,5 +1,6 @@
 package de.c4vxl.engine.utils;
 
+import de.c4vxl.engine.tensor.Tensor;
 import de.c4vxl.engine.type.DType;
 
 import java.lang.reflect.Array;
@@ -89,5 +90,23 @@ public class DataUtils {
             result[i] = i < offset ? padWith : data[i - offset];
 
         return result;
+    }
+
+    /**
+     * Cut an array from the left side to a given target length
+     * @param data The data to cut
+     * @param targetLength The targeted length
+     */
+    public static <T> T[] cutLeft(T[] data, int targetLength) {
+        return data.length > targetLength ? DataUtils.padLeft(data, null, targetLength, true) : data;
+    }
+
+    /**
+     * Cut an array from the right side to a given target length
+     * @param data The data to cut
+     * @param targetLength The targeted length
+     */
+    public static <T> T[] cutRight(T[] data, int targetLength) {
+        return data.length > targetLength ? DataUtils.padRight(data, null, targetLength, true) : data;
     }
 }

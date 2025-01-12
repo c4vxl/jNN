@@ -9,10 +9,11 @@ import de.c4vxl.engine.nn.Linear;
 import de.c4vxl.engine.nn.Sequence;
 import de.c4vxl.engine.tensor.Tensor;
 import de.c4vxl.engine.utils.TensorUtils;
+import de.c4vxl.models.type.TextGenerationModel;
 
 import java.util.ArrayList;
 
-public class Transformer extends Module {
+public class Transformer extends TextGenerationModel {
     public static class CausalSelfAttention extends Module {
         public int n_embd, n_head;
         public Linear c_attn, c_proj;
@@ -109,7 +110,8 @@ public class Transformer extends Module {
         this.lm_head = new Linear(n_embd, vocab_size, false);
     }
 
-    public Tensor<Double> forward(Tensor<?> input) {
+    @Override
+    public <T extends Number> Tensor<T> forward(Tensor<T> input) {
         Tensor<Double> idx = input.asDouble();
 
         int T = idx.size(1); // sequence length
@@ -128,6 +130,6 @@ public class Transformer extends Module {
 
         Tensor<Double> logits = this.lm_head.forward(x); // b, t, voc_size
 
-        return logits;
+        return logits.asDType(input.dtype);
     }
 }

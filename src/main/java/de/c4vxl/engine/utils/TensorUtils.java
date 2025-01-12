@@ -1,12 +1,15 @@
 package de.c4vxl.engine.utils;
 
+import de.c4vxl.engine.activation.ActivationFunction;
 import de.c4vxl.engine.tensor.Tensor;
 import de.c4vxl.engine.type.DType;
 import de.c4vxl.engine.type.Shape;
+import org.nd4j.linalg.dataset.api.preprocessor.MultiNormalizerStandardize;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.function.BiFunction;
 
 public class TensorUtils {
@@ -405,6 +408,39 @@ public class TensorUtils {
 
         if (!keepDim)
             result = result.unsqueeze(dim);
+
+        return result;
+    }
+
+    /**
+     * Returns a tensor where each row contains num_samples indices sampled from the probability distribution located in the corresponding row of tensor input.
+     * @param input The input Tensor
+     * @param num_samples The amount of samples per row
+     */
+    public static Tensor<Integer> multinomial(Tensor<? extends Number> input, int num_samples) {
+        Tensor<Integer> result = new Tensor<>(DType.INTEGER, input.size(0), num_samples);
+        Random rand = new Random();
+
+        for (int row = 0; row < input.size(0); row++) {
+            Double[] probabilities = input.get(row).asDouble().data;
+            double sum = Arrays.stream(probabilities).reduce(Double::sum).orElseThrow();
+            if (sum != 1.0)
+                for (int j = 0; j < probabilities.length; j++)
+                    probabilities[j] /= sum;
+
+            Double[] cumulativeProbabilities = probabilities.clone();
+            for (int i = 1; i < cumulativeProbabilities.length; i++)
+                cumulativeProbabilities[i] = cumulativeProbabilities[i - 1] + probabilities[i];
+
+            for (int sample = 0; sample < num_samples; sample++) {
+                for (int i = 0; i < probabilities.length; i++) {
+                    if (rand.nextDouble() <= cumulativeProbabilities[i]) {
+                        result.set(i, row, sample);
+                        break;
+                    }
+                }
+            }
+        }
 
         return result;
     }
