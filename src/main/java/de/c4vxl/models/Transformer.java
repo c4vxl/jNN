@@ -17,19 +17,12 @@ public class Transformer extends TextGenerationModel {
     public static class CausalSelfAttention extends Module {
         public int n_embd, n_head;
         public Linear c_attn, c_proj;
-        private Tensor<?> mask;
-
-        private Tensor<?> mask(int block_size) {
-            if (this.mask == null)
-                this.mask = TensorUtils.tril(Tensor.ones(block_size, block_size), 0)
-                        .reshape(1, 1, block_size, block_size);
-
-            return this.mask;
-        }
 
         public CausalSelfAttention(int n_embd, int n_head, int block_size, boolean bias) {
             this.n_head = n_head;
             this.n_embd = n_embd;
+
+            assert n_embd % n_head == 0;
 
             this.c_attn = new Linear(n_embd, 3 * n_embd, bias);
             this.c_proj = new Linear(n_embd, n_embd, bias);
@@ -52,7 +45,7 @@ public class Transformer extends TextGenerationModel {
                     .mul(k.dtype.parse(1 / Math.sqrt(k.size(-1))));
 
             // apply mask
-            qk = TensorUtils.maskedFill(qk, this.mask(T).narrow(2, 0, T).narrow(3, 0, T), 0., Double.NEGATIVE_INFINITY);
+            qk = TensorUtils.maskedFill(qk, TensorUtils.tril(Tensor.ones(T, T), 0), 0., Double.NEGATIVE_INFINITY);
 
             // apply softmax and multiply by v
             Tensor<T> qkv = ActivationFunction.Softmax(qk).matmul(v);

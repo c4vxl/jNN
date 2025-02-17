@@ -57,6 +57,6 @@ public abstract class TextGenerationModel extends Module {
             input_ids.data[input_ids.size() - 1] = input_ids.dtype.parse(nextToken);
         }
 
-        return null;
+        return input_ids;
     }
 }

@@ -406,7 +406,7 @@ public class TensorUtils {
             result = operation.apply(result, input.get(sliceIndex));
         }
 
-        if (!keepDim)
+        if (keepDim)
             result = result.unsqueeze(dim);
 
         return result;

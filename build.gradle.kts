@@ -11,5 +11,6 @@ repositories {
 
 dependencies {
     implementation("com.thoughtworks.xstream:xstream:1.4.21")
+    implementation("com.google.code.gson:gson:2.12.1")
     implementation("org.nd4j:nd4j-native-platform:1.0.0-M2.1")
 }
