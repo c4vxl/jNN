@@ -66,7 +66,14 @@ public class ActivationFunction {
      * @param dim The dimension to apply the Softmax over
      */
     public static <T> Tensor<T> Softmax(Tensor<T> input, double temperature, int dim) {
+        // scale by temperature
         Tensor<T> scaledInput = input.div(input.dtype.parse(temperature));
-        return scaledInput.exp().div(scaledInput.exp().sum(dim, true));
+
+        // apply log-sum-exp (LSE) for stabilization
+        Tensor<T> stabilizedInput = scaledInput.sub(TensorUtils.reduceAlongDimension(scaledInput, dim, Tensor::max, true));
+
+        // apply the actual softmax
+        Tensor<T> expInput = stabilizedInput.exp();
+        return expInput.div(expInput.sum(dim, true));
     }
 }
