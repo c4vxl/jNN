@@ -24,10 +24,11 @@ public class Module {
      * Load the modules parameters from a state
      * @param state The state to load from
      */
-    public Module load_state(Map<String, Object> state) {
+    @SuppressWarnings("unchecked")
+    public <T extends Module> T load_state(Map<String, Object> state) {
         SerializationUtils.loadStateRecursively(this, null, null, state, "");
 
-        return this;
+        return (T) this;
     }
 
     /**
@@ -37,6 +38,28 @@ public class Module {
         XStream xStream = new XStream();
         xStream.setMode(XStream.NO_REFERENCES);
         return xStream.toXML(this);
+    }
+
+    /**
+     * Load this module from its json representation
+     * @param json The json string
+     */
+    public Module fromJSON(String json) {
+        Map<String, Object> state = SerializationUtils.stateFromJSON(json);
+        return this.load_state(state);
+    }
+
+    /**
+     * Export this module as json with pretty = false
+     */
+    public String asJSON() { return SerializationUtils.stateToJSON(this.state(), false); }
+
+    /**
+     * Export this module as json
+     * @param pretty Enable pretty print
+     */
+    public String asJSON(boolean pretty) {
+        return SerializationUtils.stateToJSON(this.state(), pretty);
     }
 
     /**
@@ -59,26 +82,8 @@ public class Module {
      * Export this module into a file
      * @param path The path to the file
      */
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     public Module export(String path) {
-        try {
-            // create file
-            File file = new File(path);
-            if (!file.exists()) {
-                if (file.getParentFile() != null)
-                    file.getParentFile().mkdirs();
-
-                file.createNewFile();
-            }
-
-            file.setWritable(true);
-
-            // write json
-            Files.writeString(file.toPath(), this.asXML());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
+        SerializationUtils.export(this.state(), path);
         return this;
     }
 

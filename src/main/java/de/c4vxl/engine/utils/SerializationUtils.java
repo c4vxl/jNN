@@ -1,14 +1,21 @@
 package de.c4vxl.engine.utils;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.Strictness;
+import com.google.gson.ToNumberPolicy;
 import de.c4vxl.engine.module.Module;
+import de.c4vxl.engine.tensor.Tensor;
+import de.c4vxl.engine.type.DType;
+import org.nd4j.shade.guava.reflect.TypeToken;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.nio.file.Files;
+import java.util.*;
 
 public class SerializationUtils {
     /**
@@ -25,7 +32,9 @@ public class SerializationUtils {
                     object.getClass().isArray())) {
 
                 for (Field field : object.getClass().getDeclaredFields()) {
-                    if (Modifier.isPrivate(field.getModifiers())) continue;
+                    if (Modifier.isPrivate(field.getModifiers()) || field.isSynthetic()) continue;
+
+                    field.setAccessible(true);
 
                     String name = field.getName();
                     Object value = field.get(object);
@@ -104,9 +113,8 @@ public class SerializationUtils {
 
                 // System.out.println(trimmedPrefix + " @ " + f.getName() + " @ " + last.getClass().getSimpleName() + " = " + newObject);
             } catch (Exception e) {
-                System.out.println("Error while setting " + trimmedPrefix + ": " + e);
+                System.err.println("Error while setting " + trimmedPrefix + ": " + e);
             }
-
             return;
         }
 
@@ -124,7 +132,7 @@ public class SerializationUtils {
 
                 // return if key doesn't exist in state
                 if (!allKeys.contains(prefix + name))
-                    return;
+                    continue;
 
                 // lists
                 if (value instanceof List<?> list)
@@ -142,11 +150,134 @@ public class SerializationUtils {
                             loadStateRecursively(val, object, field, state, prefix + name + "." + key + "."));
 
                 else
-                    loadStateRecursively(value, object, field, state, prefix + name);
+                    loadStateRecursively(value, object, field, state, prefix + name + ".");
             } catch (Exception e) {
                 System.err.println("WARNING: Error while loading state. " + e);
                 e.printStackTrace();
             }
+        }
+    }
+
+    /**
+     * Converts a module state to JSON
+     * @param state The state to convert
+     * @param pretty Pretty print enabled
+     */
+    public static String stateToJSON(Map<String, Object> state, boolean pretty) {
+        GsonBuilder builder = new GsonBuilder();
+
+        if (pretty)
+            builder = builder.setPrettyPrinting();
+
+        return SerializationUtils.stateToJSON(state, builder.create());
+    }
+
+    /**
+     * Converts a module state to JSON
+     * @param state The state to convert
+     * @param gson The GSON instance to serialize
+     */
+    public static String stateToJSON(Map<String, Object> state, Gson gson) {
+        Map<String, Object> stateCopy = new HashMap<>(state);
+
+        state.forEach((k, v) -> {
+            // manually overwrite Tensor
+            if (state.get(k) instanceof Tensor<?> tensor)
+                stateCopy.put(k, new HashMap<>(){{
+                    put("dtype", tensor.dtype.clazz.getName());
+                    put("shape", tensor.shape.dimensions);
+                    put("data", null);
+                }});
+        });
+
+        return gson.toJson(stateCopy);
+    }
+
+    /**
+     * Construct a model state from it's json representation
+     * @param json The json string
+     */
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> stateFromJSON(String json) {
+        Gson gson = new GsonBuilder().setStrictness(Strictness.STRICT).create();
+
+        Map<String, Object> raw = gson.fromJson(json, new TypeToken<Map<?, ?>>(){}.getType());
+        Map<String, Object> state = new HashMap<>(raw);
+
+        raw.forEach((k, v) -> {
+            if (v instanceof Map<?,?> m && m.containsKey("shape") && m.containsKey("data") && m.containsKey("dtype")) {
+                DType<?> dtype;
+                try {
+                    dtype = new DType<>(Class.forName(m.get("dtype").toString()));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+
+                Tensor<?> tensor = Tensor.of(((ArrayList<?>) m.get("data")).toArray())
+                        .reshape(((ArrayList<Double>) m.get("shape")).stream().mapToInt(Double::intValue).toArray())
+                        .asDType(dtype);
+
+                state.put(k, tensor);
+            }
+        });
+
+        return state;
+    }
+
+    /**
+     * Export a state into a file with pretty print turned off
+     * @param state The state to export
+     * @param path The path to the file
+     */
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public static void export(Map<String, Object> state, String path) {
+        export(state, path, false);
+    }
+
+    /**
+     * Export a state into a file
+     * @param state The state to export
+     * @param path The path to the file
+     * @param pretty Enable pretty print
+     */
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public static void export(Map<String, Object> state, String path, boolean pretty) {
+        try {
+            // create file
+            File file = new File(path);
+            if (!file.exists()) {
+                if (file.getParentFile() != null)
+                    file.getParentFile().mkdirs();
+
+                file.createNewFile();
+            }
+
+            file.setWritable(true);
+
+            // write json
+            Files.writeString(file.toPath(), stateToJSON(state, false));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Load a module state from a file
+     * @param path The path of the file
+     */
+    public static Map<String, Object> load(String path) {
+        File file = new File(path);
+
+        if (!file.exists()) {
+            System.err.println("Trying to load module from non-existing file. Skipping...");
+            return null;
+        }
+
+        // load state
+        try {
+            return stateFromJSON(Files.readString(file.toPath()));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }
