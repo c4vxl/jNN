@@ -59,10 +59,10 @@ public class LSTM extends Module {
             Tensor<T> c_next = f.mul(c_prev).add(i.mul(g));
             Tensor<T> h_next = o.mul(ActivationFunction.tanh(c_next));
 
-            if (!is_batched) {
-                c_next = c_next.squeeze(0);
-                h_next = h_next.squeeze(0);
-            }
+//            if (!is_batched) {
+//                c_next = c_next.squeeze(0);
+//                h_next = h_next.squeeze(0);
+//            }
 
             return List.of(h_next, c_next);
         }
@@ -102,7 +102,7 @@ public class LSTM extends Module {
     }
 
     public <T> Tensor<T> forward(Tensor<T> input) {
-        LSTMOutput<T> out = this.forward(input, last_hx);
+        LSTMOutput<T> out = this.forward(input, null);
         this.last_hx = new ArrayList<>(out.hx);
         return out.result;
     }
@@ -149,7 +149,7 @@ public class LSTM extends Module {
             outputs[t] = h_t.getLast().asDType(input.dtype);
         }
 
-        return new LSTMOutput<>(outputs[0],
+        return new LSTMOutput<>(TensorUtils.stack(1, outputs),
                 TensorUtils.stack(0, h_t.toArray(Tensor[]::new)), // concatenate h back to tensor
                 TensorUtils.stack(0, c_t.toArray(Tensor[]::new))); // concatenate c back to tensor
     }

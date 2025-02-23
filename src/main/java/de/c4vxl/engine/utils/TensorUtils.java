@@ -1,10 +1,8 @@
 package de.c4vxl.engine.utils;
 
-import de.c4vxl.engine.activation.ActivationFunction;
 import de.c4vxl.engine.tensor.Tensor;
 import de.c4vxl.engine.type.DType;
 import de.c4vxl.engine.type.Shape;
-import org.nd4j.linalg.dataset.api.preprocessor.MultiNormalizerStandardize;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -260,7 +258,7 @@ public class TensorUtils {
 
             start += chunkSizes[i];
         }
-        
+
         return output;
     }
 
@@ -429,16 +427,19 @@ public class TensorUtils {
                     probabilities[j] /= sum;
 
             Double[] cumulativeProbabilities = probabilities.clone();
+            cumulativeProbabilities[0] = probabilities[0];
             for (int i = 1; i < cumulativeProbabilities.length; i++)
                 cumulativeProbabilities[i] = cumulativeProbabilities[i - 1] + probabilities[i];
 
             for (int sample = 0; sample < num_samples; sample++) {
-                for (int i = 0; i < probabilities.length; i++) {
-                    if (rand.nextDouble() <= cumulativeProbabilities[i]) {
-                        result.set(i, row, sample);
+                double randomValue = rand.nextDouble();
+                int sampledIndex = 0;
+                for (int i = 0; i < probabilities.length; i++)
+                    if (randomValue < cumulativeProbabilities[i]) {
+                        sampledIndex = i;
                         break;
                     }
-                }
+                result.set(sampledIndex, row, sample);
             }
         }
 

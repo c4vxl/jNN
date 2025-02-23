@@ -26,10 +26,10 @@ public class LSTMForNLP extends TextGenerationModel {
     }
 
     @Override
-    public <T extends Number> Tensor<T> forward(Tensor<T> input) {
-        input = this.embedding.forward(input);
-        input = this.lstm.forward(input);
-        input = this.out_proj.forward(input);
-        return input;
+    public <T extends Number> Tensor<Double> forward(Tensor<T> input) {
+        Tensor<Double> x = this.embedding.forward(input).asDouble();
+        x = this.lstm.forward(x);
+        x = this.out_proj.forward(x);
+        return x;
     }
 }

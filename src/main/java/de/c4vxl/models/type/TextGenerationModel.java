@@ -15,7 +15,7 @@ public abstract class TextGenerationModel extends Module {
     @FunctionalInterface
     public interface GenerationStream { void apply(int next_token, int idx); }
 
-    public abstract <T extends Number> Tensor<T> forward(Tensor<T> input);
+    public abstract <T extends Number> Tensor<Double> forward(Tensor<T> input);
 
 
     public <T extends Number> Tensor<T> generate(Tensor<T> input_ids, int max_new_tokens, int block_size) {
@@ -36,13 +36,14 @@ public abstract class TextGenerationModel extends Module {
                 input_ids = TensorUtils.narrow(input_ids, 1, dimSize - block_size, block_size);
 
             // forward through model
-            Tensor<T> logits = this.forward(input_ids);
+            Tensor<Double> logits = this.forward(input_ids);
+            logits = logits.get(null, -1, null); // only take the last time dimension
             if (logits.shape.rank() == 1)
                 logits = logits.unsqueeze(0);
 
             // get next token
-            logits = logits.div(input_ids.dtype.parse(temperature));
-            logits = ActivationFunction.Softmax(logits, temperature, 0);
+            logits = logits.div(temperature);
+            logits = ActivationFunction.Softmax(logits, temperature, -1);
             Integer nextToken = TensorUtils.multinomial(logits, 1).squeeze().item(0);
 
             if (stream != null)

@@ -32,28 +32,23 @@ public class DType<T> {
      */
     @SuppressWarnings("unchecked")
     public static <T> T parse(DType<T> dtype, Object obj) {
-        if (obj == null) return null; // null won't change
-        if (dtype.clazz.isInstance(obj)) return (T) obj; // return if obj is already target DType
+        if (obj == null) return null;
+        if (dtype.clazz.isInstance(obj)) return (T) obj;
 
-        // round to next full integer if target is DType.INTEGER
-        if (dtype.equals(INTEGER))
-            return (T) Integer.valueOf((int) Math.round(DType.DOUBLE.parse(obj)));
+        // Try to convert obj into a Number
+        Number number = obj instanceof Number ? (Number) obj : Double.valueOf(obj.toString());
 
-        // round to next full integer if target is DType.LONG
-        if (dtype.equals(LONG))
-            return (T) Long.valueOf(DType.INTEGER.parse(obj));
+        if (dtype.equals(INTEGER)) return (T) Integer.valueOf(number.intValue());
+        if (dtype.equals(LONG)) return (T) Long.valueOf(number.longValue());
+        if (dtype.equals(BOOLEAN)) return (T) Boolean.valueOf(number.intValue() > 0);
+        if (dtype.equals(DOUBLE)) return (T) Double.valueOf(number.doubleValue());
+        if (dtype.equals(FLOAT)) return (T) Float.valueOf(number.floatValue());
+        if (obj instanceof Boolean bool) return dtype.parse(bool ? 1 : 0);
 
-        // check if int representation is larger than 0 in case of DType.BOOLEAN
-        if (dtype.equals(BOOLEAN))
-            return (T) (DType.INTEGER.parse(obj) > 0 ? Boolean.TRUE : Boolean.FALSE);
-
-        // if obj is BOOLEAN: if obj is True, return representation of 1; if obj is False, return 0;
-        if (obj == Boolean.TRUE) return dtype.parse(1);
-        if (obj == Boolean.FALSE) return dtype.parse(0);
-
+        // Avoid reflection unless absolutely necessary
         try {
-            return (T) dtype.clazz.getMethod("valueOf", String.class).invoke(null, obj.toString());
-        } catch (Exception e) {
+            return (T) dtype.clazz.getDeclaredMethod("valueOf", String.class).invoke(null, obj.toString());
+        } catch (ReflectiveOperationException e) {
             return null;
         }
     }

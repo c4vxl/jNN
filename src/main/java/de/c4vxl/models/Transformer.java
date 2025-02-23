@@ -33,7 +33,7 @@ public class Transformer extends TextGenerationModel {
 
             // calculate q, k and v matrices
             Tensor<T>[] chunks = TensorUtils.chunk(this.c_attn.forward(x), 2, C);
-            Tensor<T> k = chunks[0], q = chunks[1], v = chunks[2];
+            Tensor<T> q = chunks[0], k = chunks[1], v = chunks[2];
 
             // split into heads
             k = k.reshape(B, T, this.n_head, C / this.n_head).transpose(1, 2); // B, nh, T, hs
@@ -104,16 +104,16 @@ public class Transformer extends TextGenerationModel {
     }
 
     @Override
-    public <T extends Number> Tensor<T> forward(Tensor<T> input) {
-        Tensor<Double> idx = input.asDouble();
-
+    public <T extends Number> Tensor<Double> forward(Tensor<T> idx) {
         int T = idx.size(1); // sequence length
 
         assert T <= this.block_size: "Sequence too long!";
 
+        Tensor<Double> x = idx.asDouble();
+
         // embedded tokens
         // shape: b, t, n_embd
-        Tensor<Double> x = this.wte.forward(idx)
+        x = this.wte.forward(x)
                 .add(this.wpe.forward(Tensor.range(T).asDouble()));
 
         for (Block block : this.heads)
@@ -123,6 +123,6 @@ public class Transformer extends TextGenerationModel {
 
         Tensor<Double> logits = this.lm_head.forward(x); // b, t, voc_size
 
-        return logits.asDType(input.dtype);
+        return logits;
     }
 }
