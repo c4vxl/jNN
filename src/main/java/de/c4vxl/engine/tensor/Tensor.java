@@ -9,7 +9,6 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
 import java.lang.reflect.Array;
-import java.nio.file.LinkPermission;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -192,8 +191,13 @@ public class Tensor<T> {
         IntStream.range(0, data.length).parallel()
                 .forEach(i -> data[i] = target.parse(this.data[i]));
 
-        return new Tensor<>(data.clone(), this.shape.dimensions.clone());
+        return new Tensor<>(data, this.shape.dimensions.clone());
     }
+
+    /**
+     * Returns a 1d tensor with the same data
+     */
+    public Tensor<T> flatten() { return this.clone().reshape(this.size()); }
 
     /**
      * Reshape this Tensor to a new shape
@@ -457,6 +461,16 @@ public class Tensor<T> {
      */
     public Tensor<T> clip(double min, double max) { return TensorUtils.elementWise(this, (a, i) ->
                 Math.max(Math.min(DType.DOUBLE.parse(a), max), min)); }
+
+    /**
+     * Get the higher element between two tensors (element wise)
+     */
+    public Tensor<T> max(Tensor<T> b) { return TensorUtils.elementWise(this, b, Math::max); }
+
+    /**
+     * Get the lower element between two tensors (element wise)
+     */
+    public Tensor<T> min(Tensor<T> b) { return TensorUtils.elementWise(this, b, Math::min); }
 
     /**
      * Get the largest element in the Tensors data
