@@ -1,9 +1,9 @@
-package de.c4vxl.engine.nn;
+package de.c4vxl.core.nn;
 
-import de.c4vxl.engine.module.Module;
-import de.c4vxl.engine.tensor.Tensor;
-import de.c4vxl.engine.type.DType;
-import de.c4vxl.engine.utils.TensorUtils;
+import de.c4vxl.core.module.Module;
+import de.c4vxl.core.tensor.Tensor;
+import de.c4vxl.core.type.DType;
+import de.c4vxl.core.utils.TensorUtils;
 
 import java.util.Arrays;
 

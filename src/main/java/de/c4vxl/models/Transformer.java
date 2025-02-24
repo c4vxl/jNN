@@ -1,14 +1,14 @@
 package de.c4vxl.models;
 
-import de.c4vxl.engine.activation.Activation;
-import de.c4vxl.engine.activation.ActivationFunction;
-import de.c4vxl.engine.module.Module;
-import de.c4vxl.engine.nn.Embedding;
-import de.c4vxl.engine.nn.LayerNorm;
-import de.c4vxl.engine.nn.Linear;
-import de.c4vxl.engine.nn.Sequence;
-import de.c4vxl.engine.tensor.Tensor;
-import de.c4vxl.engine.utils.TensorUtils;
+import de.c4vxl.core.activation.Activation;
+import de.c4vxl.core.activation.ActivationFunction;
+import de.c4vxl.core.module.Module;
+import de.c4vxl.core.nn.Embedding;
+import de.c4vxl.core.nn.LayerNorm;
+import de.c4vxl.core.nn.Linear;
+import de.c4vxl.core.nn.Sequence;
+import de.c4vxl.core.tensor.Tensor;
+import de.c4vxl.core.utils.TensorUtils;
 import de.c4vxl.models.type.TextGenerationModel;
 
 import java.util.ArrayList;

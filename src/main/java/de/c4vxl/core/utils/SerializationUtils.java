@@ -1,12 +1,11 @@
-package de.c4vxl.engine.utils;
+package de.c4vxl.core.utils;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.Strictness;
-import com.google.gson.ToNumberPolicy;
-import de.c4vxl.engine.module.Module;
-import de.c4vxl.engine.tensor.Tensor;
-import de.c4vxl.engine.type.DType;
+import de.c4vxl.core.module.Module;
+import de.c4vxl.core.tensor.Tensor;
+import de.c4vxl.core.type.DType;
 import org.nd4j.shade.guava.reflect.TypeToken;
 
 import java.io.File;
@@ -26,7 +25,7 @@ public class SerializationUtils {
      */
     public static void generateStateRecursively(Object object, Map<String, Object> state, String prefix) {
         try {
-            if (object != null && (object instanceof de.c4vxl.engine.module.Module ||
+            if (object != null && (object instanceof de.c4vxl.core.module.Module ||
                     object instanceof List<?> ||
                     object instanceof Map<?,?> ||
                     object.getClass().isArray())) {

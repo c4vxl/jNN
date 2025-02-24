@@ -1,7 +1,7 @@
-package de.c4vxl.engine.module;
+package de.c4vxl.core.module;
 
 import com.thoughtworks.xstream.XStream;
-import de.c4vxl.engine.utils.SerializationUtils;
+import de.c4vxl.core.utils.SerializationUtils;
 
 import java.io.File;
 import java.io.IOException;

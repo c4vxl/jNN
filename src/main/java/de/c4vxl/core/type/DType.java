@@ -1,4 +1,4 @@
-package de.c4vxl.engine.type;
+package de.c4vxl.core.type;
 
 import java.util.Objects;
 import java.util.Random;

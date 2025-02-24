@@ -1,8 +1,8 @@
-package de.c4vxl.engine.utils;
+package de.c4vxl.core.utils;
 
-import de.c4vxl.engine.tensor.Tensor;
-import de.c4vxl.engine.type.DType;
-import de.c4vxl.engine.type.Shape;
+import de.c4vxl.core.tensor.Tensor;
+import de.c4vxl.core.type.DType;
+import de.c4vxl.core.type.Shape;
 
 import java.util.ArrayList;
 import java.util.Arrays;

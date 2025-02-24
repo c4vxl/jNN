@@ -1,7 +1,7 @@
 package de.c4vxl.tokenizers.type;
 
-import de.c4vxl.engine.module.Module;
-import de.c4vxl.engine.tensor.Tensor;
+import de.c4vxl.core.module.Module;
+import de.c4vxl.core.tensor.Tensor;
 
 import java.util.Map;
 

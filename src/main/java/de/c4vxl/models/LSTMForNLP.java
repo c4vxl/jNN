@@ -1,9 +1,9 @@
 package de.c4vxl.models;
 
-import de.c4vxl.engine.nn.Embedding;
-import de.c4vxl.engine.nn.Linear;
-import de.c4vxl.engine.tensor.Tensor;
-import de.c4vxl.engine.type.DType;
+import de.c4vxl.core.nn.Embedding;
+import de.c4vxl.core.nn.Linear;
+import de.c4vxl.core.tensor.Tensor;
+import de.c4vxl.core.type.DType;
 import de.c4vxl.models.type.TextGenerationModel;
 
 /**

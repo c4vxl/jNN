@@ -1,15 +1,15 @@
 package de.c4vxl.models;
 
-import de.c4vxl.engine.activation.Activation;
-import de.c4vxl.engine.nn.Linear;
-import de.c4vxl.engine.nn.Sequence;
-import de.c4vxl.engine.type.DType;
+import de.c4vxl.core.activation.Activation;
+import de.c4vxl.core.nn.Linear;
+import de.c4vxl.core.nn.Sequence;
+import de.c4vxl.core.type.DType;
 
 /**
  * This class is a multilayer perceptron (MLP). Utilizing multiple linear transformation and activations to transform an input into a new output.
  * -----
  * This class is an inheritor of the "Sequence"-Module
- * @see de.c4vxl.engine.nn.Sequence
+ * @see de.c4vxl.core.nn.Sequence
  */
 public class MLP extends Sequence {
     public MLP(int in_proj, int out_proj, int num_hidden, int hidden_size) {

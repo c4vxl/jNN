@@ -1,6 +1,6 @@
 package de.c4vxl.pipeline;
 
-import de.c4vxl.engine.tensor.Tensor;
+import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.models.type.TextGenerationModel;
 import de.c4vxl.pipeline.type.Pipeline;
 import de.c4vxl.tokenizers.type.Tokenizer;

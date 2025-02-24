@@ -1,10 +1,10 @@
-package de.c4vxl.engine.tensor;
+package de.c4vxl.core.tensor;
 
-import de.c4vxl.engine.type.DType;
-import de.c4vxl.engine.type.Shape;
-import de.c4vxl.engine.utils.BroadcastingUtils;
-import de.c4vxl.engine.utils.DataUtils;
-import de.c4vxl.engine.utils.TensorUtils;
+import de.c4vxl.core.type.DType;
+import de.c4vxl.core.type.Shape;
+import de.c4vxl.core.utils.BroadcastingUtils;
+import de.c4vxl.core.utils.DataUtils;
+import de.c4vxl.core.utils.TensorUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 

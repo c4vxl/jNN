@@ -1,6 +1,6 @@
-package de.c4vxl.engine.type;
+package de.c4vxl.core.type;
 
-import de.c4vxl.engine.utils.TensorUtils;
+import de.c4vxl.core.utils.TensorUtils;
 
 import java.util.Arrays;
 

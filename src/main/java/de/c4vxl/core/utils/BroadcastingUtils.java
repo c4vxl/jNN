@@ -1,4 +1,4 @@
-package de.c4vxl.engine.utils;
+package de.c4vxl.core.utils;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;
