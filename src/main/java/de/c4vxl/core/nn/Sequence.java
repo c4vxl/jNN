@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
- * A Module-Sequence used for directly piping a value through multiple Modules in a row
+ * A Module used for stacking multiple components in sequence.
  */
 public class Sequence extends Module {
     public ArrayList<Module> modules = new ArrayList<>();

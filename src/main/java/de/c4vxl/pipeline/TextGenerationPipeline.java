@@ -5,6 +5,10 @@ import de.c4vxl.models.type.TextGenerationModel;
 import de.c4vxl.pipeline.type.Pipeline;
 import de.c4vxl.tokenizers.type.Tokenizer;
 
+/**
+ * A pipeline containing a tokenizer and TextGenerationModel.
+ * prompt -> tokenizer (encode) -> model -> tokenizer (decode) -> output
+ */
 public class TextGenerationPipeline extends Pipeline {
     public Tokenizer tokenizer;
     public TextGenerationModel model;

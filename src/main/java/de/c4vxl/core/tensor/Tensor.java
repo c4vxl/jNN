@@ -12,6 +12,12 @@ import java.lang.reflect.Array;
 import java.util.*;
 import java.util.stream.IntStream;
 
+/**
+ * A Tensor can be imagined as a multidimensional matrix of any shape and data type capable of performing various mathematical operations.
+ * Operations include element wise operations (such as "log", "pow", "exp", ...),
+ * element wise operations between two tensors (for example "add", "sub", "matmul", ...),
+ * or reshaping and transposing.
+ */
 @SuppressWarnings("unchecked")
 public class Tensor<T> {
     public T[] data;

@@ -4,6 +4,9 @@ import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.type.DType;
 import de.c4vxl.core.utils.TensorUtils;
 
+/**
+ * This class contains a collection of activation functions
+ */
 public class ActivationFunction {
     /**
      * Apply element-wise Rectified linear unit. Relu is defined as: `relu(x) = max(0, x)`

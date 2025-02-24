@@ -10,6 +10,10 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.BiFunction;
 
+/**
+ * A collection of utilities used for various tensor-operations.
+ * @see de.c4vxl.core.tensor.Tensor
+ */
 public class TensorUtils {
     /**
      * Fill the lower left triangle from a 2d tensor with a new value

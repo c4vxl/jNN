@@ -3,6 +3,10 @@ package de.c4vxl.core.utils;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 
+/**
+ * A collection of utilities used for broadcasting of two differently shaped tensors.
+ * @see de.c4vxl.core.tensor.Tensor
+ */
 public class BroadcastingUtils {
     /**
      * Calculate the broadcasted shape between two shapes

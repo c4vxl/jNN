@@ -12,6 +12,10 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * This is an implementation of the GPT2 Tokenizer as seen
+ * @see <a href="https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/tokenization_gpt2.py">Here</a>
+ */
 @SuppressWarnings("ClassEscapesDefinedScope")
 public class GPT2Tokenizer extends Tokenizer {
     static class Pair<A, B> {

@@ -13,7 +13,11 @@ import de.c4vxl.models.type.TextGenerationModel;
 
 import java.util.ArrayList;
 
-public class Transformer extends TextGenerationModel {
+/**
+ * A NLP-Model build after the "Decoder-only-Transformer" architecture as seen with gpt2.
+ * @see <a href="https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/modeling_gpt2.py">HuggingFace</a>
+ */
+public class DecoderTransformer extends TextGenerationModel {
     public static class CausalSelfAttention extends Module {
         public int n_embd, n_head;
         public Linear c_attn, c_proj;
@@ -85,7 +89,7 @@ public class Transformer extends TextGenerationModel {
     public Linear lm_head;
     public ArrayList<Block> heads = new ArrayList<>();
 
-    public Transformer(int n_embd, int n_head, int n_layer, int block_size, int vocab_size, boolean bias) {
+    public DecoderTransformer(int n_embd, int n_head, int n_layer, int block_size, int vocab_size, boolean bias) {
         this.block_size = block_size;
 
         // embeddings

@@ -10,6 +10,10 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * This class serves as a base for every "component".
+ * Every "Module" can be serialized into its "state" and reloaded of it.
+ */
 public class Module {
     /**
      * Captures important parameters in a map

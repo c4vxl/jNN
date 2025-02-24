@@ -16,6 +16,10 @@ import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.util.*;
 
+/**
+ * A utility class for the serialization of modules.
+ * @see de.c4vxl.core.module.Module
+ */
 public class SerializationUtils {
     /**
      * Generate a state of an object

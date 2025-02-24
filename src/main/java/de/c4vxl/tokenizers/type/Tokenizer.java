@@ -5,6 +5,9 @@ import de.c4vxl.core.tensor.Tensor;
 
 import java.util.Map;
 
+/**
+ * This class serves as a base for Tokenizer of any kind.
+ */
 public abstract class Tokenizer extends Module {
     public String unk_token, eos_token, pad_token, bos_token;
 

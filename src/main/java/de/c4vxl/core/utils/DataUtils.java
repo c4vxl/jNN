@@ -5,6 +5,9 @@ import de.c4vxl.core.type.DType;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 
+/**
+ * A collection of utilities used handling general data.
+ */
 public class DataUtils {
     /**
      * Fills the passed `data`-array with random values between 0...1
