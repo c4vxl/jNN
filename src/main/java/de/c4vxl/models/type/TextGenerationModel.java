@@ -50,7 +50,7 @@ public abstract class TextGenerationModel extends Module {
                 stream.apply(nextToken, i);
 
             // stop on eos_token
-            if (Objects.equals(nextToken, eos_token_id))
+            if (eos_token_id != null && Objects.equals(nextToken, eos_token_id))
                 break;
 
             // append nextToken
