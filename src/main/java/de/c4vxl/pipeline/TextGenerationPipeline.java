@@ -16,7 +16,7 @@ public class TextGenerationPipeline extends Pipeline {
     public double temperature = 1.0;
     public int newTokens = 100;
     public Integer eos;
-    public TextGenerationModel.GenerationStream stream = null;
+    private TextGenerationModel.GenerationStream stream = null;
 
     public TextGenerationPipeline(Tokenizer tokenizer, TextGenerationModel model) {
         this.tokenizer = tokenizer;
