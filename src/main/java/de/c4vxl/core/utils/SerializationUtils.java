@@ -6,6 +6,7 @@ import com.google.gson.Strictness;
 import de.c4vxl.core.module.Module;
 import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.type.DType;
+import de.c4vxl.jNN;
 import org.nd4j.shade.guava.reflect.TypeToken;
 
 import java.io.File;
@@ -116,7 +117,8 @@ public class SerializationUtils {
 
                 // System.out.println(trimmedPrefix + " @ " + f.getName() + " @ " + last.getClass().getSimpleName() + " = " + newObject);
             } catch (Exception e) {
-                System.err.println("Error while setting " + trimmedPrefix + ": " + e);
+                if (jNN.LOG_STATE_GENERATION_ERROR)
+                    System.err.println("Error while setting " + trimmedPrefix + ": " + e);
             }
             return;
         }
@@ -155,8 +157,10 @@ public class SerializationUtils {
                 else
                     loadStateRecursively(value, object, field, state, prefix + name + ".");
             } catch (Exception e) {
-                System.err.println("WARNING: Error while loading state. " + e);
-                e.printStackTrace();
+                if (jNN.LOG_STATE_GENERATION_ERROR) {
+                    System.err.println("WARNING: Error while loading state. " + e);
+                    throw new RuntimeException(e);
+                }
             }
         }
     }
@@ -191,6 +195,10 @@ public class SerializationUtils {
                     put("shape", tensor.shape.dimensions);
                     put("data", null);
                 }});
+
+            // manually overwrite DType
+            if (state.get(k) instanceof DType<?> dtype)
+                stateCopy.put(k, "DType:" + dtype.clazz.getName());
         });
 
         return gson.toJson(stateCopy);
@@ -222,6 +230,16 @@ public class SerializationUtils {
 
                 state.put(k, tensor);
             }
+
+            if (v instanceof String str) {
+                if (str.startsWith("DType:")) {
+                    try {
+                        state.put(k, new DType<>(Class.forName(str.split("DType:")[1])));
+                    } catch (ClassNotFoundException e) {
+                        state.put(k, DType.DEFAULT);
+                    }
+                }
+            }
         });
 
         return state;
@@ -232,7 +250,6 @@ public class SerializationUtils {
      * @param state The state to export
      * @param path The path to the file
      */
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     public static void export(Map<String, Object> state, String path) {
         export(state, path, false);
     }
@@ -258,7 +275,7 @@ public class SerializationUtils {
             file.setWritable(true);
 
             // write json
-            Files.writeString(file.toPath(), stateToJSON(state, false));
+            Files.writeString(file.toPath(), stateToJSON(state, pretty));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
