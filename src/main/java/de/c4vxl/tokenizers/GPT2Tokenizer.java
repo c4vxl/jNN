@@ -2,6 +2,7 @@ package de.c4vxl.tokenizers;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import de.c4vxl.core.module.Module;
 import de.c4vxl.tokenizers.type.Tokenizer;
 
 import java.io.IOException;
@@ -18,28 +19,20 @@ import java.util.regex.Pattern;
  */
 @SuppressWarnings("ClassEscapesDefinedScope")
 public class GPT2Tokenizer extends Tokenizer {
-    static class Pair<A, B> {
-        public final A first;
-        public final B second;
-
-        public Pair(A first, B second) {
-            this.first = first;
-            this.second = second;
-        }
-
-        @Override public boolean equals(Object o) {
+    public record Pair<A, B>(A first, B second) {
+        @Override
+        public boolean equals(Object o) {
             return (o instanceof Pair) && Objects.equals(((Pair<?, ?>) o).first, this.first) && Objects.equals(((Pair<?, ?>) o).second, this.second);
         }
-        @Override public int hashCode() { return Objects.hash(first, second); }
 
         @Override
-        public String toString() {
-            return "Pair{" +
-                    "first=" + first +
-                    ", second=" + second +
-                    '}';
+            public String toString() {
+                return "Pair{" +
+                        "first=" + first +
+                        ", second=" + second +
+                        '}';
+            }
         }
-    }
 
     /**
      * Generates a mapping of utf-8 byte to unicode strings.
@@ -70,7 +63,6 @@ public class GPT2Tokenizer extends Tokenizer {
     /**
      * Return set of symbol pairs in a word.
      */
-    @SuppressWarnings("ClassEscapesDefinedScope")
     public static Set<Pair<String, String>> getPairs(List<String> word) {
         Set<Pair<String, String>> pairs = new LinkedHashSet<>();
         String prev = word.getFirst();
@@ -90,10 +82,26 @@ public class GPT2Tokenizer extends Tokenizer {
     private Map<Pair<String, String>, Integer> bpeRanks;
     private Map<String, String> cache;
     private Pattern pattern;
+    private List<Pair<String, String>> merges;
 
+    /**
+     * Creates an un-initialized version of the tokenizer.
+     */
+    public GPT2Tokenizer() {
+        super("<|endoftext|>", "<|endoftext|>", "<|endoftext|>", "<|endoftext|>");
+    }
+
+    /**
+     * Create a tokenizer instance and initialize it.
+     * @param encoder The vocabulary of the tokenizer
+     * @param bpeMerges The merges history
+     */
     public GPT2Tokenizer(Map<String, Integer> encoder, List<Pair<String, String>> bpeMerges) {
         super("<|endoftext|>", "<|endoftext|>", "<|endoftext|>", "<|endoftext|>");
+        init(encoder, bpeMerges);
+    }
 
+    private void init(Map<String, Integer> encoder, List<Pair<String, String>> bpeMerges) {
         // set vocabulary en-/decoder
         this.encoder = encoder;
         this.decoder = new HashMap<>(){{ encoder.forEach((k, v) -> put(v, k)); }};
@@ -103,17 +111,26 @@ public class GPT2Tokenizer extends Tokenizer {
         this.byteDecoder = new HashMap<>(){{ byteEncoder.forEach((k, v) -> put(v, k)); }};
 
         // Mapping: bpeMerges -> $i
+        this.merges = bpeMerges;
         this.bpeRanks = new HashMap<>(){{ for (int i = 0; i < bpeMerges.size(); i++) put(bpeMerges.get(i), i); }};
 
         this.cache = new HashMap<>();
         this.pattern = Pattern.compile("'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)|\\s+");;
     }
 
+    /**
+     * Load a tokenizer from its data dir
+     * @param dataDir The path to the dir containing the vocab.json and merges.txt
+     */
     public static GPT2Tokenizer from_pretrained(String dataDir) {
         return GPT2Tokenizer.from_pretrained(Path.of(dataDir, "vocab.json"), Path.of(dataDir, "merges.txt"));
     }
 
-    @SuppressWarnings("unchecked")
+    /**
+     * Loads a tokenizer from a vocab and merges file
+     * @param vocab_file The path to the vocab file
+     * @param merges_file The path to the merges file
+     */
     public static GPT2Tokenizer from_pretrained(Path vocab_file, Path merges_file) {
         try {
             return new GPT2Tokenizer(
@@ -121,7 +138,7 @@ public class GPT2Tokenizer extends Tokenizer {
                     new ArrayList<>(
                             Files.readAllLines(merges_file).stream()
                                     .map(l -> l.split("\\s+"))
-                                    .filter(parts -> parts.length >= 2)
+                                    .filter(parts -> parts.length >= 2 && !parts[0].startsWith("#"))
                                     .map(parts -> new Pair<>(parts[0], parts[1])).toList()
                     )
             );
@@ -258,5 +275,43 @@ public class GPT2Tokenizer extends Tokenizer {
     @Override
     public String decode_(Integer[] tokens) {
         return this.convertTokensToString(Arrays.stream(tokens).map(this::convertIdToToken).toArray(String[]::new));
+    }
+
+    @Override
+    public Map<String, Object> state() {
+        return new HashMap<>() {{
+            put("encoder", encoder);
+            put("merges", new ArrayList<>(merges.stream().map((pair) -> pair.first + ";" + pair.second).toList()));
+        }};
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Module> T load_state(Map<String, Object> state) {
+        // Ensure all important keys are present
+        if (!(state.containsKey("merges") && state.containsKey("encoder"))) return (T) this;
+
+        // Get encoder
+        Map<String, Object> _encoder = (Map<String, Object>) state.get("encoder");
+        Map<String, Integer> encoder = new HashMap<>() {{
+            _encoder.forEach((key, value) -> {
+                if (value instanceof Double d) value = d.intValue();
+                else value = Integer.valueOf(value.toString());
+                put(key, (Integer) value);
+            });
+        }};
+
+        // Get merges history
+        List<Pair<String, String>> bpeMerges = ((ArrayList<String>) state.get("merges")).stream()
+                .map(x -> {
+                    String[] parts = x.split(";");
+                    if (parts.length != 2) return null;
+                    return new Pair<>(parts[0], parts[1]);
+                }).filter(Objects::nonNull).toList();
+
+        // Init
+        init(encoder, bpeMerges);
+
+        return (T) this;
     }
 }
