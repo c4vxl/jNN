@@ -217,7 +217,7 @@ public class SerializationUtils {
                 }
 
                 Tensor<?> tensor = Tensor.of(((ArrayList<?>) m.get("data")).toArray())
-                        .reshape(((ArrayList<Double>) m.get("shape")).stream().mapToInt(Double::intValue).toArray())
+                        .reshape(((ArrayList<Double>) m.get("shape")).stream().map(Double::intValue).toArray(Integer[]::new))
                         .asDType(dtype);
 
                 state.put(k, tensor);

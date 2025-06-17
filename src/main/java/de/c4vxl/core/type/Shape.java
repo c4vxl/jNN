@@ -5,9 +5,11 @@ import de.c4vxl.core.utils.TensorUtils;
 import java.util.Arrays;
 
 public class Shape {
-    public int[] dimensions;
+    public Integer[] dimensions;
 
-    public Shape(int... shape) {
+    public int size = -1;
+
+    public Shape(Integer... shape) {
         this.dimensions = shape;
     }
 
@@ -19,7 +21,11 @@ public class Shape {
     /**
      * Returns the amount of data this Tensor can store
      */
-    public int size() { return TensorUtils.shapeToSize(this.dimensions); }
+    public int size() {
+        if (this.size == -1)
+            this.size = TensorUtils.shapeToSize(this.dimensions);
+        return this.size;
+    }
 
 
     @Override

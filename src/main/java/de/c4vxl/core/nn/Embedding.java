@@ -22,7 +22,7 @@ public class Embedding extends Module {
     public <T> Tensor<T> forward(Tensor<T> x) {
         Integer[] indices = x.asInt().data;
 
-        int[] newShape = Arrays.copyOf(x.shape.dimensions.clone(), x.shape.rank() + 1);
+        Integer[] newShape = Arrays.copyOf(x.shape.dimensions.clone(), x.shape.rank() + 1);
         newShape[newShape.length - 1] = this.weight.size(1);
         Tensor<T> result = Tensor.ones(TensorUtils.padShapeLeft(3, true, newShape)).asDType(x.dtype);
 

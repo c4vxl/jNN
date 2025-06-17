@@ -97,7 +97,11 @@ public class TensorUtils {
      * Returns the size of the shape if it was 1d
      * @param shape The shape
      */
-    public static int shapeToSize(int... shape) { return Arrays.stream(shape).reduce(1, (a, b) -> a * b); }
+    public static int shapeToSize(Integer... shape) {
+        int size = 1;
+        for (int i : shape) size *= i;
+        return size;
+    }
 
     /**
      * Pad a shape by prepending ones to the left side
@@ -105,16 +109,16 @@ public class TensorUtils {
      * @param cut Define if the shape should be cut if it is already larger than `targetLength`
      * @param shape The shape to pad
      */
-    public static int[] padShapeLeft(int targetLength, boolean cut, int... shape) {
-        return DataUtils.intIndex(DataUtils.padLeft(DataUtils.IntegerIndex(shape), 1, targetLength, cut));
+    public static Integer[] padShapeLeft(int targetLength, boolean cut, Integer... shape) {
+        return DataUtils.padLeft(shape, 1, targetLength, cut);
     }
 
     /**
      * Calculates all possible ways to index into a multidimensional shape
      * @param shape The shape
      */
-    public static int[][] calculatePossibleIndices(int[] shape) {
-        int[][] combinations = new int[TensorUtils.shapeToSize(shape)][shape.length];
+    public static Integer[][] calculatePossibleIndices(Integer[] shape) {
+        Integer[][] combinations = new Integer[TensorUtils.shapeToSize(shape)][shape.length];
         for (int i = 0; i < combinations.length; i++)
             combinations[i] = TensorUtils.unravelIndex(shape, i);
         return combinations;
@@ -124,8 +128,8 @@ public class TensorUtils {
      * Computes the strides of a shape
      * @param shape The shape
      */
-    public static int[] calculateStrides(int[] shape) {
-        int[] strides = new int[shape.length];
+    public static Integer[] calculateStrides(Integer[] shape) {
+        Integer[] strides = new Integer[shape.length];
         int stride = 1;
 
         for (int i = shape.length - 1; i >= 0; i--) {
@@ -141,8 +145,8 @@ public class TensorUtils {
      * @param shape The shape to index into
      * @param idx The flat index
      */
-    public static int[] unravelIndex(int[] shape, int idx) {
-        int[] result = new int[shape.length];
+    public static Integer[] unravelIndex(Integer[] shape, int idx) {
+        Integer[] result = new Integer[shape.length];
         for (int i = shape.length - 1; i >= 0; i--) {
             result[i] = idx % shape[i];
             idx /= shape[i];
@@ -155,8 +159,8 @@ public class TensorUtils {
      * @param shape The shape of to index into
      * @param idx The multidimensional index
      */
-    public static int flatIndex(int[] shape, int... idx) {
-        idx = DataUtils.intIndex(DataUtils.handleNegativeIndexing(shape, DataUtils.IntegerIndex(idx)));
+    public static int flatIndex(Integer[] shape, Integer... idx) {
+        idx = DataUtils.handleNegativeIndexing(shape, idx);
 
         int flatIdx = 0;
         for (int i = 0; i < idx.length; i++)
@@ -169,7 +173,7 @@ public class TensorUtils {
      * @param tensor The tensor to cut the slice out of
      * @param dimensions The position of the slice
      */
-    public static int[] calculateSliceShape(Tensor<?> tensor, Integer[] dimensions) {
+    public static Integer[] calculateSliceShape(Tensor<?> tensor, Integer[] dimensions) {
         // calculate new shape
         List<Integer> newShape = new ArrayList<>();
         for (int i = 0; i < dimensions.length; i++) {
@@ -183,7 +187,7 @@ public class TensorUtils {
             // if not: add 1 (index points directly to an element)
             else newShape.add(1);
         }
-        return newShape.stream().mapToInt(Integer::intValue).toArray();
+        return newShape.toArray(Integer[]::new);
     }
 
     /**
@@ -193,7 +197,7 @@ public class TensorUtils {
      * @param start The starting point
      * @param length The length of the narrowed window
      */
-    public static <T> Tensor<T> narrow(Tensor<T> tensor, int dim, int start, int length) {
+    public static <T> Tensor<T> narrow(Tensor<T> tensor, Integer dim, int start, int length) {
         dim = DataUtils.handleNegativeIndexing(tensor.shape.dimensions, dim);
 
         if (dim < 0 || dim >= tensor.shape.rank())
@@ -202,12 +206,12 @@ public class TensorUtils {
         if (tensor.size(dim) < start + length || start < 0)
             throw new IndexOutOfBoundsException("Start index and length are out of bounds.");
 
-        int[] newShape = tensor.shape.dimensions.clone();
+        Integer[] newShape = tensor.shape.dimensions.clone();
         newShape[dim] = length;
 
         Tensor<T> result = new Tensor<>(tensor.dtype, newShape);
         for (int i = 0; i < result.size(); i++) {
-            int[] idx = unravelIndex(result.shape.dimensions, i);
+            Integer[] idx = unravelIndex(result.shape.dimensions, i);
             idx[dim] += start;
             result.data[i] = tensor.data[flatIndex(tensor.shape.dimensions, idx)];
         }
@@ -235,7 +239,7 @@ public class TensorUtils {
         Tensor<T> result = tensor.clone();
 
         for (int i = 0; i < slice.data.length; i++) {
-            int[] targetIdx = unravelIndex(slice.shape.dimensions, i);
+            Integer[] targetIdx = unravelIndex(slice.shape.dimensions, i);
             targetIdx[dim] += start;
             result = result.set(slice.data[i], targetIdx);
         }
@@ -303,10 +307,10 @@ public class TensorUtils {
         if (!Arrays.stream(tensors).allMatch(a -> a.shape.equals(shape)))
             throw new IllegalArgumentException("All tensors must be of the same shape!");
 
-        List<Integer> newShape = new ArrayList<>(Arrays.stream(shape.dimensions).boxed().toList());
+        List<Integer> newShape = new ArrayList<>(Arrays.stream(shape.dimensions).toList());
         newShape.add(dim, tensors.length);
 
-        Tensor<T> result = new Tensor<>(tensors[0].dtype, newShape.stream().mapToInt(Integer::intValue).toArray());
+        Tensor<T> result = new Tensor<>(tensors[0].dtype, newShape.toArray(Integer[]::new));
         Integer[] index = new Integer[result.dim()];
         for (int i = 0; i < tensors.length; i++) {
             index[dim] = i;
@@ -335,9 +339,9 @@ public class TensorUtils {
 
         // populate result tensor
         for (int resultFlatIndex = 0; resultFlatIndex < result.data.length; resultFlatIndex++) {
-            int[] resultIdx = unravelIndex(result.shape.dimensions, resultFlatIndex);
+            Integer[] resultIdx = unravelIndex(result.shape.dimensions, resultFlatIndex);
 
-            int[] inputIdx = new int[tensor.shape.rank()];
+            Integer[] inputIdx = new Integer[tensor.shape.rank()];
             for (int i = 0; i < inputIdx.length; i++)
                 inputIdx[i] = dimensions[i] == null ? resultIdx[i] : dimensions[i];
 
@@ -365,16 +369,16 @@ public class TensorUtils {
                 DataUtils.padRight(dimensions, null, tensor.shape.rank(), false));
 
         // add batch dimensions back to slice
-        int[] sliceShape = TensorUtils.calculateSliceShape(tensor, dimensions);
+        Integer[] sliceShape = TensorUtils.calculateSliceShape(tensor, dimensions);
         if (TensorUtils.shapeToSize(sliceShape) != slice.size())
             throw new IllegalArgumentException("Invalid slice shape! Expected " + Arrays.toString(sliceShape) + "!");
         slice = slice.reshape(sliceShape);
 
         // populate result tensor
         for (int sliceFlatIndex = 0; sliceFlatIndex < slice.data.length; sliceFlatIndex++) {
-            int[] sliceIdx = unravelIndex(slice.shape.dimensions, sliceFlatIndex);
+            Integer[] sliceIdx = unravelIndex(slice.shape.dimensions, sliceFlatIndex);
 
-            int[] inputIdx = new int[tensor.shape.rank()];
+            Integer[] inputIdx = new Integer[tensor.shape.rank()];
             for (int i = 0; i < inputIdx.length; i++)
                 inputIdx[i] = dimensions[i] == null ? sliceIdx[i] : dimensions[i];
 
@@ -396,7 +400,7 @@ public class TensorUtils {
     public static <T> Tensor<T> reduceAlongDimension(Tensor<T> input, int dim, BiFunction<Tensor<T>, Tensor<T>, Tensor<T>> operation, boolean keepDim) {
         dim = DataUtils.handleNegativeIndexing(input.shape.dimensions, dim);
 
-        int[] outputShape = input.shape.dimensions.clone();
+        Integer[] outputShape = input.shape.dimensions.clone();
         outputShape[dim] = 1;
         Tensor<T> result = TensorUtils.filled(input.reshapeUnsafe(outputShape), 0).squeeze(dim);
 
@@ -470,11 +474,11 @@ public class TensorUtils {
                                                       int blockSize) {
         // base case: a and b are at block size -> multiply them
         if (aRows <= blockSize || aCols <= blockSize || bCols <= blockSize) {
-            int[] batchShape = Arrays.copyOfRange(result.shape.dimensions, 0, result.shape.rank() - 2);
+            Integer[] batchShape = Arrays.copyOfRange(result.shape.dimensions, 0, result.shape.rank() - 2);
 
-            for (int[] batchIndices : TensorUtils.calculatePossibleIndices(batchShape)) {
-                Tensor<T> aSlice = TensorUtils.getSlice(a, false, DataUtils.IntegerIndex(batchIndices));
-                Tensor<T> bSlice = TensorUtils.getSlice(b, false, DataUtils.IntegerIndex(batchIndices));
+            for (Integer[] batchIndices : TensorUtils.calculatePossibleIndices(batchShape)) {
+                Tensor<T> aSlice = TensorUtils.getSlice(a, false, batchIndices);
+                Tensor<T> bSlice = TensorUtils.getSlice(b, false, batchIndices);
                 Tensor<T> sliceResult = new Tensor<>(a.dtype, aRows, bCols);
                 if (aSlice.shape.rank() == 0)
                     aSlice = aSlice.unsqueeze(0).unsqueeze(0);
@@ -495,7 +499,7 @@ public class TensorUtils {
                     }
                 }
 
-                result.set(sliceResult, DataUtils.IntegerIndex(batchIndices));
+                result.set(sliceResult, batchIndices);
             }
 
             return;

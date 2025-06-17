@@ -11,9 +11,9 @@ public class LayerNorm extends Module {
     public Tensor<Double> weight, bias;
     public double epsilon;
 
-    public LayerNorm(int... normalizedShape) { this(true, normalizedShape); }
-    public LayerNorm(boolean bias, int... normalizedShape) { this(1e-05, bias, normalizedShape); }
-    public LayerNorm(double eps, boolean bias, int... normalizedShape) {
+    public LayerNorm(Integer... normalizedShape) { this(true, normalizedShape); }
+    public LayerNorm(boolean bias, Integer... normalizedShape) { this(1e-05, bias, normalizedShape); }
+    public LayerNorm(double eps, boolean bias, Integer... normalizedShape) {
         this.weight = Tensor.ones(normalizedShape).asDouble();
         this.bias = bias ? Tensor.zeros(normalizedShape).asDouble() : null;
         this.epsilon = eps;

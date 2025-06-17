@@ -25,7 +25,7 @@ public class DataUtils {
      * @param data The data to index into
      * @param idx The index into the dimensions
      */
-    public static int handleNegativeIndexing(int[] data, int idx) {
+    public static int handleNegativeIndexing(Integer[] data, int idx) {
         if (idx < 0) return (data.length + (idx % data.length)) % data.length;
         return idx;
     }
@@ -35,24 +35,12 @@ public class DataUtils {
      * @param dimensions The dimensions to index into
      * @param idx The multidimensional index
      */
-    public static Integer[] handleNegativeIndexing(int[] dimensions, Integer[] idx) {
+    public static Integer[] handleNegativeIndexing(Integer[] dimensions, Integer[] idx) {
         for (int i = 0; i < dimensions.length; i++)
             if (idx[i] != null && idx[i] < 0)
                 idx[i] = (dimensions[i] + (idx[i] % dimensions[i])) % dimensions[i];
         return idx;
     }
-
-    /**
-     * Convert an index in Integer format into an int-index
-     * @param idx The index
-     */
-    public static int[] intIndex(Integer... idx) { return Arrays.stream(idx).mapToInt(Integer::intValue).toArray(); }
-
-    /**
-     * Convert an index in int format into an Integer-index
-     * @param idx The index
-     */
-    public static Integer[] IntegerIndex(int... idx) { return Arrays.stream(idx).boxed().toArray(Integer[]::new); }
 
     /**
      * Pad a Data array to fit a given size
