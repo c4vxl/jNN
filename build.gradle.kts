@@ -19,6 +19,10 @@ tasks.jar {
     exclude("de/c4vxl/Main.class")
 }
 
+tasks.javadoc {
+    (options as CoreJavadocOptions).addStringOption("Xdoclint:none", "-quiet")
+}
+
 java {
     withSourcesJar()
     withJavadocJar()
@@ -32,9 +36,6 @@ publishing {
             groupId = "de.c4vxl"
             artifactId = "jNN"
             version = "1.0.0"
-
-            artifact(tasks.named("sourcesJar"))
-            artifact(tasks.named("javadocJar"))
         }
     }
 
