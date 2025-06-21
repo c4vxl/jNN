@@ -17,7 +17,6 @@ import java.util.regex.Pattern;
  * This is an implementation of the GPT2 Tokenizer as seen
  * @see <a href="https://github.com/huggingface/transformers/blob/main/src/transformers/models/gpt2/tokenization_gpt2.py">Here</a>
  */
-@SuppressWarnings("ClassEscapesDefinedScope")
 public class GPT2Tokenizer extends Tokenizer {
     public record Pair<A, B>(A first, B second) {
         @Override
@@ -35,7 +34,7 @@ public class GPT2Tokenizer extends Tokenizer {
         }
 
     /**
-     * Generates a mapping of utf-8 byte to unicode strings.
+     * Generates a mapping of utf-8 byte to Unicode strings.
      */
     public static Map<Integer, String> bytesToUnicode() {
         List<Integer> bs = new ArrayList<>(){{
@@ -85,10 +84,16 @@ public class GPT2Tokenizer extends Tokenizer {
     private List<Pair<String, String>> merges;
 
     /**
-     * Creates an un-initialized version of the tokenizer.
+     * Creates a version of the tokenizer without any merges and Unicode vocabulary.
      */
     public GPT2Tokenizer() {
-        super("<|endoftext|>", "<|endoftext|>", "<|endoftext|>", "<|endoftext|>");
+        this(
+                new HashMap<>() {{
+                    bytesToUnicode().forEach((k, v) -> put(v, k)); // normal Unicode chars
+                    put("<|endoftext|>", 256);                                   // eos token
+                }},
+                new ArrayList<>()                                                // no merges
+        );
     }
 
     /**
