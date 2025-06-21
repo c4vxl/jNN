@@ -35,7 +35,7 @@ public class SerializationUtils {
                     object instanceof Map<?,?> ||
                     object.getClass().isArray())) {
 
-                for (Field field : object.getClass().getDeclaredFields()) {
+                for (Field field : object.getClass().getFields()) {
                     if (Modifier.isPrivate(field.getModifiers()) || field.isSynthetic()) continue;
 
                     field.setAccessible(true);
@@ -47,10 +47,11 @@ public class SerializationUtils {
                     if (Module.class.isAssignableFrom(field.getType()))
                         generateStateRecursively(value, state, prefix + name + ".");
 
-                        // lists
-                    else if (List.class.isAssignableFrom(field.getType()))
+                    // lists
+                    else if (List.class.isAssignableFrom(field.getType())) {
                         for (int i = 0; i < ((List<?>) value).size(); i++)
                             generateStateRecursively(((List<?>) value).get(i), state, prefix + name + "." + i + ".");
+                    }
 
                         // maps
                     else if (Map.class.isAssignableFrom(field.getType()))
@@ -65,12 +66,12 @@ public class SerializationUtils {
                         // parameter
                     else
                         generateStateRecursively(value, state, prefix + name);
-
                 }
             } else
                 state.put(prefix.endsWith(".") ? prefix.substring(0, prefix.length() - 1) : prefix, object);
         } catch (Exception e) {
-            System.err.println("WARNING: Error while generating state. " + e);
+            if (jNN.LOG_STATE_GENERATION_ERROR)
+                System.err.println("WARNING: Error while generating state. " + e);
         }
     }
 
@@ -193,7 +194,7 @@ public class SerializationUtils {
                 stateCopy.put(k, new HashMap<>(){{
                     put("dtype", tensor.dtype.clazz.getName());
                     put("shape", tensor.shape.dimensions);
-                    put("data", null);
+                    put("data", tensor.data);
                 }});
 
             // manually overwrite DType
