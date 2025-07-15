@@ -1,5 +1,8 @@
 package de.c4vxl.core.utils;
 
+import de.c4vxl.core.tensor.Tensor;
+import org.nd4j.shade.wstx.util.StringUtil;
+
 import java.lang.reflect.Array;
 import java.util.Arrays;
 
@@ -60,5 +63,27 @@ public class BroadcastingUtils {
         }
 
         return broadcastedData;
+    }
+
+    /**
+     * Reduce a broadcasted tensor back to its original shape
+     * @param self The broadcasted tensor
+     * @param targetShape The original/target shape
+     */
+    public static <T> Tensor<T> reduceToShape(Tensor<T> self, Integer... targetShape) {
+        Integer[] shape = self.shape.dimensions;
+
+        int offset = shape.length - targetShape.length;
+
+        // Sum over any leading broadcasted dims
+        for (int i = 0; i < offset; i++)
+            self = self.sum(0, true);
+
+        // Sum over dims where target shape is 1 but self.shape > 1
+        for (int i = 0; i < targetShape.length; i++)
+            if (targetShape[i] == 1 && shape[i + offset] > 1)
+                self = self.sum(i + offset, true);
+
+        return self;
     }
 }

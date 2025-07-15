@@ -1,13 +1,12 @@
 package de.c4vxl.core.tensor;
 
+import de.c4vxl.core.tensor.operation.*;
+import de.c4vxl.core.tensor.operation.type.Operation;
 import de.c4vxl.core.type.DType;
 import de.c4vxl.core.type.Shape;
 import de.c4vxl.core.utils.BroadcastingUtils;
 import de.c4vxl.core.utils.DataUtils;
 import de.c4vxl.core.utils.TensorUtils;
-import de.c4vxl.jNN;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.Nd4j;
 
 import java.lang.reflect.Array;
 import java.util.*;
@@ -23,6 +22,79 @@ public class Tensor<T> {
     public T[] data;
     public Shape shape;
     public DType<T> dtype;
+
+    /**
+     * Whether this tensor was created by a user or by the autograd engine
+     */
+    public boolean is_leaf = true;
+
+    /**
+     * Whether the tensor uses a gradient
+     */
+    public boolean requires_grad = true;
+
+    /**
+     * The gradient of this tensor
+     */
+    public Tensor<T> grad;
+
+    /**
+     * The parents that were used to compute this tensor
+     */
+    public List<Tensor<T>> parents = List.of();
+
+    /**
+     * The operation that resulted in this tensor
+     */
+    public Operation<T> operation;
+
+    /**
+     * Accumulates this tensors gradient with a new one
+     */
+    public void accumulate_grad(Tensor<T> grad) {
+        if (this.grad == null)
+            this.grad = grad;
+        else
+            this.grad = this.grad.add(grad);
+    }
+
+    /**
+     * Zero out the gradients in the graph starting from this tensor
+     */
+    public void zeroGrad() {
+        if (this.requires_grad)
+            this.grad = null;
+
+        for (Tensor<T> parent : this.parents)
+            parent.zeroGrad();
+    }
+
+    /**
+     * Perform backpropagation starting from this tensor
+     */
+    public void backward() {
+        if (!requires_grad)
+            throw new IllegalStateException("Cannot backpropagate on a tensor that doesn't have requires_grad enabled!");
+
+        // Initialize gradient
+        if (this.grad == null)
+            this.grad = Tensor.filled(this.dtype.parse(1), this.shape.dimensions);
+
+        Stack<Tensor<T>> stack = new Stack<>();
+        stack.push(this);
+
+        while (!stack.isEmpty()) {
+            Tensor<T> current = stack.pop();
+
+            if (current.operation != null)
+                current.operation.backward(current.grad);
+
+            for (Tensor<T> parent : current.parents) {
+                if (parent.requires_grad)
+                    stack.push(parent);
+            }
+        }
+    }
 
     /**
      * Get the amount of dimensions in the Tensor
@@ -225,18 +297,7 @@ public class Tensor<T> {
      * Reshape this Tensor to a new shape whiles ignoring the size boundaries
      * @param newShape The new shape of the Tensor
      */
-    public Tensor<T> reshapeUnsafe(Integer... newShape) {
-        Tensor<T> result = this.clone();
-        result.shape = new Shape(newShape);
-
-        // Return if booth elements are the same size
-        if (result.size() == this.size()) return result;
-
-        result.data = (T[]) Array.newInstance(this.dtype.clazz, result.shape.size());
-        for (int i = 0; i < result.data.length; i++)
-            result.data[i] = this.data.length > i ? this.data[i] : null;
-        return result;
-    }
+    public Tensor<T> reshapeUnsafe(Integer... newShape) { return new ReshapeOperation<>(this, newShape).forward(); }
 
     /**
      * Insert an "empty" dimension of size "1" in a given position between (-rank-1...rank)
@@ -287,12 +348,7 @@ public class Tensor<T> {
      *
      * @param shape The shape to broadcast the Tensor to
      */
-    public Tensor<T> broadcastTo(Integer... shape) {
-        Integer[] broadcastedShape = BroadcastingUtils.broadcastShapes(this.shape.dimensions, shape);
-        Tensor<T> result = this.clone().reshapeUnsafe(broadcastedShape);
-        result.data = BroadcastingUtils.broadcastData(this.data, this.shape.dimensions, broadcastedShape);
-        return result;
-    }
+    public Tensor<T> broadcastTo(Integer... shape) { return new BroadcastOperation<>(this, shape).forward(); }
 
     /**
      * Broadcast this Tensor to the shape of another Tensor
@@ -301,6 +357,12 @@ public class Tensor<T> {
      * @param other The other tensor
      */
     public Tensor<T> broadcastTo(Tensor<?> other) { return this.broadcastTo(other.shape.dimensions); }
+
+    /**
+     * Reduce a broadcasted tensor back to its original shape
+     * @param shape The original/target shape
+     */
+    public Tensor<T> reduceToShape(Integer... shape) { return BroadcastingUtils.reduceToShape(this, shape); }
 
     /**
      * Returns a narrowed version of this tensor.
@@ -398,7 +460,7 @@ public class Tensor<T> {
      * Perform element wise addition between the values of this Tensor and another one
      * @param other The second Tensor
      */
-    public Tensor<T> add(Tensor<T> other) { return TensorUtils.elementWise(this, other, Double::sum); }
+    public Tensor<T> add(Tensor<T> other) { return new AddOperation<>(this, other).forward(); }
 
     /**
      * Perform element wise subtraction between the values of this Tensor another value
@@ -410,7 +472,7 @@ public class Tensor<T> {
      * Perform element wise subtraction between the values of this Tensor and another one
      * @param other The second Tensor
      */
-    public Tensor<T> sub(Tensor<T> other) { return TensorUtils.elementWise(this, other, (a, b) -> a - b); }
+    public Tensor<T> sub(Tensor<T> other) { return new SubOperation<>(this, other).forward(); }
 
     /**
      * Perform element wise division between the values of this Tensor another value
@@ -422,7 +484,7 @@ public class Tensor<T> {
      * Perform element wise division between the values of this Tensor and another one
      * @param other The second Tensor
      */
-    public Tensor<T> div(Tensor<T> other) { return TensorUtils.elementWise(this, other, (a, b) -> a / b); }
+    public Tensor<T> div(Tensor<T> other) { return new DivOperation<>(this, other).forward(); }
 
     /**
      * Perform element wise multiplication between the values of this Tensor another value
@@ -434,7 +496,7 @@ public class Tensor<T> {
      * Perform element wise multiplication between the values of this Tensor and another one
      * @param other The second Tensor
      */
-    public Tensor<T> mul(Tensor<T> other) { return TensorUtils.elementWise(this, other, (a, b) -> a * b); }
+    public Tensor<T> mul(Tensor<T> other) { return new MulOperation<>(this, other).forward(); }
 
     /**
      * Raise each element to a power
@@ -446,14 +508,18 @@ public class Tensor<T> {
      * Perform element wise power between the values of this Tensor and another one
      * @param power The second Tensor
      */
-    public Tensor<T> pow(Tensor<?> power) { return TensorUtils.elementWise(this, power, Math::pow); }
+    public Tensor<T> pow(Tensor<?> power) { return new PowOperation<>(this, power.asDType(this.dtype)).forward(); }
 
     /**
      * Compute the square root for each element
      */
-    public Tensor<T> sqrt() {
-        return TensorUtils.elementWise(this, (a, i) -> Math.sqrt(DType.DOUBLE.parse(a)));
-    }
+    public Tensor<T> sqrt() { return this.root(2.); }
+
+    /**
+     * Compute the n-th root for each element
+     * @param degree The degree of the root
+     */
+    public Tensor<T> root(double degree) { return new RootOperation<>(this, degree).forward(); }
 
     /**
      * Perform exponentiation on each element
@@ -465,17 +531,19 @@ public class Tensor<T> {
     /**
      * Perform logarithm on each element
      */
-    public Tensor<T> log() {
-        return TensorUtils.elementWise(this, (a, i) -> Math.log(DType.DOUBLE.parse(a)));
-    }
+    public Tensor<T> log() { return new LogOperation<>(this).forward(); }
+
+    /**
+     * Negate the values in this tensor
+     */
+    public Tensor<T> neg() { return this.mul(this.dtype.parse(-1)); }
 
     /**
      * Clip each element at a min and max
      * @param min The lowest value an element can be
      * @param max The largest value an element can be
      */
-    public Tensor<T> clip(double min, double max) { return TensorUtils.elementWise(this, (a, i) ->
-                Math.max(Math.min(DType.DOUBLE.parse(a), max), min)); }
+    public Tensor<T> clip(double min, double max) { return new ClipOperation<>(this, min, max).forward(); }
 
     /**
      * Get the higher element between two tensors (element wise)
@@ -515,7 +583,7 @@ public class Tensor<T> {
      * @param keepDim Should the summed dimension be removed?
      *                More information at `TensorUtils.reduceAlongDimension`
      */
-    public Tensor<T> sum(int dim, boolean keepDim) { return TensorUtils.reduceAlongDimension(this, dim, Tensor::add, keepDim); }
+    public Tensor<T> sum(int dim, boolean keepDim) { return new SumOperation<>(this, dim, keepDim).forward(); }
 
     /**
      * Reduce a specific dimension by averaging its values
@@ -523,7 +591,7 @@ public class Tensor<T> {
      * @param keepDim Should the averaged dimension be removed?
      *                More information at `TensorUtils.reduceAlongDimension`
      */
-    public Tensor<T> mean(int dim, boolean keepDim) { return this.sum(dim, keepDim).div(this.dtype.parse(this.size(dim))); }
+    public Tensor<T> mean(int dim, boolean keepDim) { return new MeanOperation<>(this, dim, keepDim).forward(); }
 
     /**
      * Compute the variance over a dimension
@@ -572,62 +640,20 @@ public class Tensor<T> {
      * Perform matrix multiplication over the last two dimensions of this tensor with another one
      * @param b The second Tensor
      */
-    public Tensor<T> matmul(Tensor<T> b) {
-        Tensor<T> a = this;
-
-        boolean wasA1D = false, wasB1D = false;
-        if (a.shape.rank() == 1) {
-            a = a.unsqueeze(0);
-            wasA1D = true;
-        }
-        if (b.shape.rank() == 1) {
-            b = b.unsqueeze(0);
-            wasB1D = true;
-        }
-
-        // pad a and b to same rank
-        int length = Math.max(a.shape.rank(), b.shape.rank());
-        a = a.reshape(TensorUtils.padShapeLeft(length, false, a.shape.dimensions));
-        b = b.reshape(TensorUtils.padShapeLeft(length, false, b.shape.dimensions));
-
-        Tensor<T> result;
-
-        if (jNN.MATMUL_TYPE == 1) { // nd4j version
-            INDArray ndarray = Nd4j.matmul(Nd4j.createFromArray(a.asDouble().data).reshape(Arrays.stream(a.shape.dimensions).mapToInt(Integer::intValue).toArray()),
-                    Nd4j.createFromArray(b.asDouble().data).reshape(Arrays.stream(b.shape.dimensions).mapToInt(Integer::intValue).toArray()));
-
-            result = new Tensor<>(
-                    Arrays.stream(ndarray.data().asDouble()).boxed().toArray(Double[]::new),
-                    Arrays.stream(ndarray.shape()).boxed().map(l -> (Integer) l.intValue()).toArray(Integer[]::new)
-            ).asDType(this.dtype);
-        } else {                    // own version
-            int aRows = a.size(-2);
-            int aCols = a.size(-1);
-            int bCols = b.size(-1);
-
-            // calculate broadcasted batch shape
-            Integer[] batchShape = BroadcastingUtils.broadcastShapes(
-                    Arrays.copyOfRange(a.shape.dimensions, 0, a.shape.rank() - 2),
-                    Arrays.copyOfRange(b.shape.dimensions, 0, b.shape.rank() - 2)
-            );
-            Integer[] resultShape = Arrays.copyOfRange(batchShape, 0, batchShape.length + 2);
-            resultShape[resultShape.length - 2] = aRows;
-            resultShape[resultShape.length - 1] = bCols;
-            result = new Tensor<>(this.dtype, resultShape);
-
-            // perform matrix multiplication
-            TensorUtils.performBlockMultiplication(a, b, result, aRows, aCols, bCols,
-                    0, 0, 0, 0, 32);
-        }
-
-        if (wasA1D) result = result.squeeze(0);
-        if (wasB1D) result = result.squeeze(-1);
-        return result;
-    }
+    public Tensor<T> matmul(Tensor<T> b) { return new MatMulOperation<>(this, b).forward(); }
 
     @Override
     public Tensor<T> clone() {
-        return new Tensor<>(this.data, this.shape.dimensions);
+        Tensor<T> copy = new Tensor<>(this.data.clone(), this.shape.dimensions);
+
+        if (this.requires_grad) {
+            copy.requires_grad = true;
+            copy.grad = this.grad;
+            copy.operation = this.operation;
+            copy.parents = this.parents;
+        }
+
+        return copy;
     }
 
     @Override
