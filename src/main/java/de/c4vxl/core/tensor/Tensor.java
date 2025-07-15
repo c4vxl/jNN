@@ -52,6 +52,8 @@ public class Tensor<T> {
      * Accumulates this tensors gradient with a new one
      */
     public void accumulate_grad(Tensor<T> grad) {
+        grad.requires_grad = false;
+
         if (this.grad == null)
             this.grad = grad;
         else
@@ -614,27 +616,7 @@ public class Tensor<T> {
      * @param dim0 The dimension to swap with `dim1`
      * @param dim1 The dimension to swap with `dim0`
      */
-    public Tensor<T> transpose(int dim0, int dim1) {
-        dim0 = DataUtils.handleNegativeIndexing(this.shape.dimensions, dim0);
-        dim1 = DataUtils.handleNegativeIndexing(this.shape.dimensions, dim1);
-
-        Integer[] newShape = this.shape.dimensions.clone();
-        newShape[dim0] = this.size(dim1);
-        newShape[dim1] = this.size(dim0);
-
-        Tensor<T> result = this.clone().reshape(newShape);
-
-        for (int i = 0; i < this.size(); i++) {
-            Integer[] indices = TensorUtils.unravelIndex(this.shape.dimensions, i);
-            int tempIndex = indices[dim0];
-            indices[dim0] = indices[dim1];
-            indices[dim1] = tempIndex;
-
-            result.set(this.data[i], indices);
-        }
-
-        return result;
-    }
+    public Tensor<T> transpose(int dim0, int dim1) { return new TransposeOperation<>(this, dim0, dim1).forward(); }
 
     /**
      * Perform matrix multiplication over the last two dimensions of this tensor with another one
