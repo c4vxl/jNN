@@ -1,6 +1,7 @@
 package de.c4vxl.core.nn.module;
 
 import de.c4vxl.core.tensor.Tensor;
+import de.c4vxl.core.tensor.grad.GradContext;
 import de.c4vxl.core.utils.SerializationUtils;
 
 import java.io.File;
@@ -16,6 +17,47 @@ import java.util.Map;
  * Every "Module" can be serialized into its "state" and reloaded of it.
  */
 public class Module {
+    private boolean isTrainMode = true;
+
+    /**
+     * Returns {@code true} when the module is currently in train mode
+     */
+    public boolean isTrainMode() { return this.isTrainMode; }
+
+    /**
+     * Sets this modules parameters .requires_grad variable
+     * @param value {@code true} if params should require a gradient
+     */
+    public void requires_grad(boolean value) {
+        for (Tensor<?> parameter : this.parameters()) {
+            parameter.requires_grad = value;
+        }
+    }
+
+    /**
+     * Puts this module into train mode
+     * In this mode gradients will be tracked normally
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Module> T train() {
+        this.isTrainMode = true;
+        requires_grad(true);
+        GradContext.setNoGrad(false);
+        return (T) this;
+    }
+
+    /**
+     * Puts this module into evaluation mode
+     * In this mode gradients won't be tracked for better performance
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Module> T eval() {
+        this.isTrainMode = false;
+        requires_grad(false);
+        GradContext.setNoGrad(true);
+        return (T) this;
+    }
+
     /**
      * Returns a list of all parameters of the model
      */

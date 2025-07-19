@@ -45,7 +45,7 @@ public abstract class Operation<T> {
      */
     public Tensor<T> forward() {
         Tensor<T> result = this._forward();
-        result.requires_grad = this.inputs.stream().anyMatch(inp -> inp.requires_grad);
+        result.requires_grad = this.inputs.stream().allMatch(inp -> inp.requires_grad);
         result.operation = this;
         result.parents = List.of(this.inputs.toArray(Tensor<?>[]::new));
         result.is_leaf = false;
