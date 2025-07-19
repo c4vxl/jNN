@@ -16,4 +16,9 @@ public class jNN {
      * If set to 1 "nd4j" will be used; If set to 0 own implementation will be used!
      */
     public static int MATMUL_TYPE = 1;
+
+    /**
+     * Weather a newly created tensor should require a gradient if not specified
+     */
+    public static boolean DEFAULT_REQUIRE_GRADIENT = true;
 }

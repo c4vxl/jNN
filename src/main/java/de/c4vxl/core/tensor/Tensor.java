@@ -1,5 +1,6 @@
 package de.c4vxl.core.tensor;
 
+import de.c4vxl.core.tensor.grad.GradContext;
 import de.c4vxl.core.tensor.operation.*;
 import de.c4vxl.core.tensor.operation.type.Operation;
 import de.c4vxl.core.type.DType;
@@ -50,7 +51,7 @@ public class Tensor<T> {
     /**
      * Whether the tensor uses a gradient
      */
-    public boolean requires_grad = true;
+    public boolean requires_grad = !GradContext.isNoGrad();
 
     /**
      * The gradient of this tensor
