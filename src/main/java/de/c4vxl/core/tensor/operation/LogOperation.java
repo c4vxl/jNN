@@ -27,7 +27,7 @@ public class LogOperation<T> extends Operation<T> {
         Tensor<T> grad = gradOutput.reduceToShape(this.getValue("aShape"));
 
         // grad[log(a)] = a⁻¹
-        grad = grad.div(a.max((Tensor<T>) a.dtype.parse(1e-7)));  // using max(a, 1e-7) as log(a) with a <= 0 would be undefined
+        grad = grad.div(a.detach().max((Tensor<T>) a.dtype.parse(1e-7)));  // using max(a, 1e-7) as log(a) with a <= 0 would be undefined
 
         this.a.accumulate_grad(grad);
     }

@@ -4,6 +4,8 @@ import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.tensor.operation.type.Operation;
 import de.c4vxl.core.utils.TensorUtils;
 
+import java.util.List;
+
 public class MulOperation<T> extends Operation<T> {
     protected Tensor<T> a, b;
 
@@ -28,8 +30,8 @@ public class MulOperation<T> extends Operation<T> {
         Tensor<T> gradB = gradOutput.reduceToShape(this.getValue("bShape"));
 
         // grad[a * b] = [ b, a ]
-        gradA = gradA.mul(this.b);
-        gradB = gradB.mul(this.a);
+        gradA = gradA.mul(this.b.detach());
+        gradB = gradB.mul(this.a.detach());
 
         this.a.accumulate_grad(gradA);
         this.b.accumulate_grad(gradB);

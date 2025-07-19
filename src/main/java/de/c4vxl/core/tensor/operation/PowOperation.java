@@ -29,8 +29,9 @@ public class PowOperation<T> extends Operation<T> {
 
         // grad[a^b] = [ b*a^(b-1), -a / b² ]
 
-        gradA = gradA.mul(this.b.mul(this.a.pow(b.sub(b.dtype.parse(1)))));
-        gradB = gradB.mul(this.a.neg().div(this.b.pow(2)));
+        Tensor<T> a = this.a.detach(), b = this.b.detach();
+        gradA = gradA.mul(b.mul(a.pow(b.sub(b.dtype.parse(1)))));
+        gradB = gradB.mul(a.neg().div(b.pow(2)));
 
         this.a.accumulate_grad(gradA);
         this.b.accumulate_grad(gradB);

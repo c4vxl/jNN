@@ -32,7 +32,7 @@ public class RootOperation<T> extends Operation<T> {
         Tensor<T> grad = gradOutput.reduceToShape(this.getValue("aShape"));
 
         double exponent = (1.0 / this.degree) - 1.0;
-        Tensor<T> pow = this.a.pow(exponent);
+        Tensor<T> pow = this.a.detach().pow(exponent);
 
         Tensor<T> factor = pow.mul(this.a.dtype.parse(1.0 / this.degree));
         Tensor<T> result = grad.mul(factor);

@@ -25,6 +25,13 @@ public class MatMulOperation<T> extends Operation<T> {
 
     @Override
     public Tensor<T> _forward() {
+        // Copy inputs to local scope
+        // This is done so that changes applied to them won't propagate to the backward pass
+        Tensor<T> a = this.a, b = this.b;
+
+        if (a.shape.rank() == 1 && b.shape.rank() == 1)
+            return a.mul(b);
+
         boolean wasA1D = false, wasB1D = false;
         if (a.shape.rank() == 1) {
             a = a.unsqueeze(0);
@@ -78,13 +85,12 @@ public class MatMulOperation<T> extends Operation<T> {
 
     @Override
     public void _backward(Tensor<T> gradOutput) {
-        Tensor<T> gradA = gradOutput.reduceToShape(this.getValue("aShape"));
-        Tensor<T> gradB = gradOutput.reduceToShape(this.getValue("bShape"));
-
         // grad[a @ b] = [ b.T(), a.T() ]
+        Tensor<T> gradA = gradOutput.matmul(this.b.detach().T());
+        Tensor<T> gradB = this.a.detach().T().matmul(gradOutput);
 
-        gradA = gradA.matmul(this.b.T());
-        gradB = this.a.T().matmul(gradB);
+        gradA = gradA.reduceToShape(this.getValue("aShape"));
+        gradB = gradB.reduceToShape(this.getValue("bShape"));
 
         this.a.accumulate_grad(gradA);
         this.b.accumulate_grad(gradB);

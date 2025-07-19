@@ -28,8 +28,9 @@ public class DivOperation<T> extends Operation<T> {
         Tensor<T> gradB = gradOutput.reduceToShape(this.getValue("bShape"));
 
         // grad[a / b] = [ b⁻¹, -a / b² ] --> negate b
-        gradA = gradA.div(this.b);
-        gradB = gradB.mul(this.a.neg().div(b.pow(2)));
+        Tensor<T> bDetached = this.b.detach();
+        gradA = gradA.div(bDetached);
+        gradB = gradB.mul(this.a.detach().neg().div(bDetached.pow(2)));
 
         this.a.accumulate_grad(gradA);
         this.b.accumulate_grad(gradB.neg());

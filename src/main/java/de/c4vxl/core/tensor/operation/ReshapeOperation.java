@@ -40,7 +40,7 @@ public class ReshapeOperation<T> extends Operation<T> {
         Tensor<T> grad = gradOutput.reduceToShape(this.getValue("aShape"));
 
         // grad[reshape(a, $shape)] = out.reshape($original)
-        grad = grad.reshape(this.getValue("aShape"));
+        grad = grad.reshapeUnsafe(this.getValue("aShape"));
 
         this.a.accumulate_grad(grad);
     }
