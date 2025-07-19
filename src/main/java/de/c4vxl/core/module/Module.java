@@ -1,5 +1,6 @@
 package de.c4vxl.core.module;
 
+import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.utils.SerializationUtils;
 
 import java.io.File;
@@ -7,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,6 +16,14 @@ import java.util.Map;
  * Every "Module" can be serialized into its "state" and reloaded of it.
  */
 public class Module {
+    /**
+     * Returns a list of all parameters of the model
+     */
+    public List<Tensor<?>> parameters() {
+        Tensor<?>[] params = this.state().values().stream().filter(x -> x instanceof Tensor<?>).toArray(Tensor<?>[]::new);
+        return List.of(params);
+    }
+
     /**
      * Captures important parameters in a map
      */

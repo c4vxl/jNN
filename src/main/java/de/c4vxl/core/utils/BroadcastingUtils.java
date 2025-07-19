@@ -81,7 +81,7 @@ public class BroadcastingUtils {
 
         // Sum over dims where target shape is 1 but self.shape > 1
         for (int i = 0; i < targetShape.length; i++)
-            if (targetShape[i] == 1 && shape[i + offset] > 1)
+            if (targetShape[i] == 1 && i + offset >= 0 && shape[i + offset] > 1)
                 self = self.sum(i + offset, true);
 
         return self;
