@@ -19,9 +19,28 @@ import java.util.*;
  */
 @SuppressWarnings("unchecked")
 public class Tensor<T> {
+    /**
+     * The data of the tensor in a 1d format
+     * @see TensorUtils#calculateStrides(Integer[])
+     * @see TensorUtils#unravelIndex(Integer[], int)
+     * @see TensorUtils#flatIndex(Integer[], Integer...)
+     */
     public T[] data;
+
+    /**
+     * The shape of the tensor
+     */
     public Shape shape;
+
+    /**
+     * The datatype of the tensor
+     */
     public DType<T> dtype;
+
+    /**
+     * An optional label used for identifying tensors during debugging
+     */
+    public String label;
 
     /**
      * Whether this tensor was created by a user or by the autograd engine
@@ -41,12 +60,12 @@ public class Tensor<T> {
     /**
      * The parents that were used to compute this tensor
      */
-    public List<Tensor<T>> parents = List.of();
+    public List<Tensor<?>> parents = List.of();
 
     /**
      * The operation that resulted in this tensor
      */
-    public Operation<T> operation;
+    public Operation<?> operation;
 
     /**
      * Accumulates this tensors gradient with a new one
@@ -64,11 +83,27 @@ public class Tensor<T> {
      * Zero out the gradients in the graph starting from this tensor
      */
     public void zeroGrad() {
-        if (this.requires_grad)
-            this.grad = null;
+        Stack<Tensor<?>> stack = new Stack<>();
+        Set<Tensor<?>> visited = new HashSet<>();
 
-        for (Tensor<T> parent : this.parents)
-            parent.zeroGrad();
+        // Start at this node
+        stack.push(this);
+
+        while (!stack.isEmpty()) {
+            Tensor<?> current = stack.pop();
+
+            // Skip if the current node has already been visited
+            if (!visited.add(current))
+                continue;
+
+            // Reset gradient
+            if (current.requires_grad)
+                current.grad = null;
+
+            // Add parents to the stack
+            for (Tensor<?> parent : current.parents)
+                stack.push(parent);
+        }
     }
 
     /**
@@ -78,24 +113,33 @@ public class Tensor<T> {
         if (!requires_grad)
             throw new IllegalStateException("Cannot backpropagate on a tensor that doesn't have requires_grad enabled!");
 
+        Set<Integer> visited = new HashSet<>();
+        List<Tensor<?>> order = new ArrayList<>();
+        buildTopologicalBackwardPath(this, visited, order);
+
         // Initialize gradient
         if (this.grad == null)
             this.grad = Tensor.filled(this.dtype.parse(1), this.shape.dimensions);
 
-        Stack<Tensor<T>> stack = new Stack<>();
-        stack.push(this);
+        Collections.reverse(order);
+        for (Tensor<?> tensor : order)
+            if (tensor.operation != null)
+                tensor.operation.backward(tensor.grad);
+    }
 
-        while (!stack.isEmpty()) {
-            Tensor<T> current = stack.pop();
+    private void buildTopologicalBackwardPath(Tensor<?> tensor, Set<Integer> visited, List<Tensor<?>> order) {
+        // Skip if node has already been visited
+        // Using System.identityHashCode since a node could be the parent of two different nodes in the graph
+        // This will look out for a change in the gradient
+        if (!visited.add(System.identityHashCode(tensor)))
+            return;
 
-            if (current.operation != null)
-                current.operation.backward(current.grad);
+        // Add parents to the stack
+        for (Tensor<?> parent : tensor.parents)
+            buildTopologicalBackwardPath(parent, visited, order);
 
-            for (Tensor<T> parent : current.parents) {
-                if (parent.requires_grad)
-                    stack.push(parent);
-            }
-        }
+        // Add order
+        order.add(tensor);
     }
 
     /**
@@ -276,7 +320,9 @@ public class Tensor<T> {
             data[i] = target.parse(this.data[i]);
         }
 
-        return new Tensor<>(data, this.shape.dimensions.clone());
+        Tensor<R> result = new Tensor<>(data, this.shape.dimensions.clone());
+        result.update(this, true, true);
+        return result;
     }
 
     /**
@@ -412,6 +458,9 @@ public class Tensor<T> {
      * @param dtype The dtype to return the value in
      */
     public <R> R item(DType<R> dtype, Integer... idx) {
+        if (idx.length == 0)
+            idx = Tensor.filled(0, this.shape.rank()).data;
+
         boolean isValid = idx.length == this.shape.rank();
 
         int flat = -1;
@@ -624,6 +673,50 @@ public class Tensor<T> {
      */
     public Tensor<T> matmul(Tensor<T> b) { return new MatMulOperation<>(this, b).forward(); }
 
+    /**
+     * Update the values of this tensor
+     * @param a The other version of this tensor
+     */
+    public <R> void update(Tensor<R> a) { update(a, false, false); }
+
+    /**
+     * Update the values of this tensor
+     * @param a The other version of this tensor
+     * @param ignoreData Whether data should be overwritten
+     * @param ignoreShape Whether the shape should be changed
+     */
+    public <R> void update(Tensor<R> a, boolean ignoreShape, boolean ignoreData) {
+        if (!this.shape.equals(a.shape) && !ignoreShape)
+            this.reshapeUnsafe(a.shape.dimensions);
+
+        this.requires_grad = a.requires_grad;
+        this.grad = (Tensor<T>) a.grad;
+        this.operation = a.operation;
+        this.parents = a.parents;
+
+        if (!ignoreData)
+            this.data = (T[]) a.data;
+    }
+
+    /**
+     * Returns a copy of this tensor fully detached from the computational graph that won't require a gradient
+     */
+    public Tensor<T> detach() { return this.detach(false); }
+
+    /**
+     * Returns a copy of this tensor fully detached from the computational graph
+     * @param requires_grad Whether the detached tensor should require a gradient
+     */
+    public Tensor<T> detach(boolean requires_grad) {
+        Tensor<T> copy = this.clone();
+        copy.requires_grad = requires_grad;
+        copy.parents = List.of();
+        copy.is_leaf = true;
+        copy.operation = null;
+        // copy.grad = null;
+        return copy;
+    }
+
     @Override
     public Tensor<T> clone() {
         Tensor<T> copy = new Tensor<>(this.data.clone(), this.shape.dimensions);
@@ -635,6 +728,8 @@ public class Tensor<T> {
             copy.parents = this.parents;
         }
 
+        copy.label = this.label;
+
         return copy;
     }
 
@@ -645,6 +740,7 @@ public class Tensor<T> {
                 ", size=" + shape.size() +
                 ", dtype=" + dtype +
                 ", data=" + Arrays.toString(data) +
+                (this.label != null ? ", label=" + this.label : "") +
                 '}';
     }
 
@@ -657,6 +753,6 @@ public class Tensor<T> {
 
     @Override
     public int hashCode() {
-        return Objects.hash(Arrays.hashCode(data), shape, dtype);
+        return Objects.hash(Arrays.hashCode(data), shape, grad, dtype);
     }
 }
