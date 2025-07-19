@@ -54,10 +54,11 @@ public class Sequence extends Module {
      * Forward an input through the sequence
      * @param input The input
      */
-    public Object forward(Object input) {
+    @SuppressWarnings("unchecked")
+    public <T> T forward(Object input) {
         for (Module module : this.modules)
             input = module._forward(input);
 
-        return input;
+        return (T) input;
     }
 }
