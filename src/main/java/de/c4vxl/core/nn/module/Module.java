@@ -1,4 +1,4 @@
-package de.c4vxl.core.module;
+package de.c4vxl.core.nn.module;
 
 import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.utils.SerializationUtils;

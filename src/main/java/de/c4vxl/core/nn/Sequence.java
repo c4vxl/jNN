@@ -1,6 +1,6 @@
 package de.c4vxl.core.nn;
 
-import de.c4vxl.core.module.Module;
+import de.c4vxl.core.nn.module.Module;
 
 import java.util.ArrayList;
 import java.util.Arrays;

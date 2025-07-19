@@ -1,6 +1,6 @@
 package de.c4vxl.models;
 
-import de.c4vxl.core.activation.Activation;
+import de.c4vxl.core.nn.activation.Activation;
 import de.c4vxl.core.nn.Linear;
 import de.c4vxl.core.nn.Sequence;
 import de.c4vxl.core.type.DType;

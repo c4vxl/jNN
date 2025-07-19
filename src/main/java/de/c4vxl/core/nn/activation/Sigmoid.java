@@ -1,4 +1,4 @@
-package de.c4vxl.core.activation;
+package de.c4vxl.core.nn.activation;
 
 import de.c4vxl.core.tensor.Tensor;
 

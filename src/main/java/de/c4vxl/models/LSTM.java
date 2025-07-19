@@ -1,7 +1,7 @@
 package de.c4vxl.models;
 
-import de.c4vxl.core.activation.ActivationFunction;
-import de.c4vxl.core.module.Module;
+import de.c4vxl.core.nn.activation.ActivationFunction;
+import de.c4vxl.core.nn.module.Module;
 import de.c4vxl.core.nn.Linear;
 import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.type.DType;

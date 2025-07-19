@@ -1,6 +1,6 @@
-package de.c4vxl.core.loss.type;
+package de.c4vxl.core.nn.loss.type;
 
-import de.c4vxl.core.module.Module;
+import de.c4vxl.core.nn.module.Module;
 import de.c4vxl.core.tensor.Tensor;
 
 public abstract class LossFunction extends Module {

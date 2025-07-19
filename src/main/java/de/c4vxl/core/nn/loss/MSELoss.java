@@ -1,6 +1,6 @@
-package de.c4vxl.core.loss;
+package de.c4vxl.core.nn.loss;
 
-import de.c4vxl.core.loss.type.LossFunction;
+import de.c4vxl.core.nn.loss.type.LossFunction;
 import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.tensor.operation.MSEOperation;
 

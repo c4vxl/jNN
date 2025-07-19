@@ -3,7 +3,7 @@ package de.c4vxl.core.utils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.Strictness;
-import de.c4vxl.core.module.Module;
+import de.c4vxl.core.nn.module.Module;
 import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.type.DType;
 import de.c4vxl.jNN;
@@ -19,7 +19,7 @@ import java.util.*;
 
 /**
  * A utility class for the serialization of modules.
- * @see de.c4vxl.core.module.Module
+ * @see de.c4vxl.core.nn.module.Module
  */
 public class SerializationUtils {
     /**
@@ -30,7 +30,7 @@ public class SerializationUtils {
      */
     public static void generateStateRecursively(Object object, Map<String, Object> state, String prefix) {
         try {
-            if (object != null && (object instanceof de.c4vxl.core.module.Module ||
+            if (object != null && (object instanceof de.c4vxl.core.nn.module.Module ||
                     object instanceof List<?> ||
                     object instanceof Map<?,?> ||
                     object.getClass().isArray())) {

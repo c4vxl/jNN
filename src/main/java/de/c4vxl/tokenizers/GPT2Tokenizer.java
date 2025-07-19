@@ -2,7 +2,7 @@ package de.c4vxl.tokenizers;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import de.c4vxl.core.module.Module;
+import de.c4vxl.core.nn.module.Module;
 import de.c4vxl.tokenizers.type.Tokenizer;
 
 import java.io.IOException;
