@@ -6,6 +6,7 @@ import de.c4vxl.core.optim.type.AbstractOptimizer;
 import de.c4vxl.core.optim.type.Optimizer;
 import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.type.DType;
+import de.c4vxl.models.type.Model;
 import de.c4vxl.train.type.Trainer;
 
 import java.util.HashMap;
@@ -18,8 +19,7 @@ import java.util.function.Function;
  */
 public class StandardTrainer<T> extends Trainer {
     private final HashMap<Tensor<T>, Tensor<T>> trainSplit, testSplit;
-    private final Module model;
-    private final Function<Tensor<T>, Tensor<T>> forwardMethod;
+    private final Model<T> model;
     private final int num_epochs, logging_rate, testing_rate;
     private final Optimizer optimizer;
     private final LossFunction criterion;
@@ -29,7 +29,6 @@ public class StandardTrainer<T> extends Trainer {
     /**
      * Create a new trainer instance without a testing dataset split
      * @param model The model to train
-     * @param forwardMethod The method used for forwarding through the model
      * @param optimizer The optimizer connected to the models parameters
      * @param criterion The loss function to evaluate model performance
      * @param trainSplit The train split of the dataset
@@ -40,8 +39,7 @@ public class StandardTrainer<T> extends Trainer {
      * @param clip_grads_max The maximum value gradients can be. (Set to null to ignore)
      */
     public StandardTrainer(
-            Module model,
-            Function<Tensor<T>, Tensor<T>> forwardMethod,
+            Model<T> model,
             Optimizer optimizer,
             LossFunction criterion,
             HashMap<Tensor<T>, Tensor<T>> trainSplit,
@@ -51,13 +49,12 @@ public class StandardTrainer<T> extends Trainer {
             Double clip_grads_min,
             Double clip_grads_max
     ) {
-        this(model, forwardMethod, optimizer, criterion, trainSplit, null, num_epochs, logging_rate, -1, trainLogger, null, clip_grads_min, clip_grads_max);
+        this(model, optimizer, criterion, trainSplit, null, num_epochs, logging_rate, -1, trainLogger, null, clip_grads_min, clip_grads_max);
     }
 
     /**
      * Create a new trainer instance
      * @param model The model to train
-     * @param forwardMethod The method used for forwarding through the model
      * @param optimizer The optimizer connected to the models parameters
      * @param criterion The loss function to evaluate model performance
      * @param trainSplit The train split of the dataset
@@ -71,8 +68,7 @@ public class StandardTrainer<T> extends Trainer {
      * @param clip_grads_max The maximum value gradients can be. (Set to null to ignore)
      */
     public StandardTrainer(
-            Module model,
-            Function<Tensor<T>, Tensor<T>> forwardMethod,
+            Model<T> model,
             Optimizer optimizer,
             LossFunction criterion,
             HashMap<Tensor<T>, Tensor<T>> trainSplit,
@@ -86,7 +82,6 @@ public class StandardTrainer<T> extends Trainer {
             Double clip_grads_max
     ) {
         this.model = model;
-        this.forwardMethod = forwardMethod;
         this.optimizer = optimizer;
         this.criterion = criterion;
         this.trainSplit = trainSplit;
@@ -128,7 +123,7 @@ public class StandardTrainer<T> extends Trainer {
         for (Map.Entry<Tensor<T>, Tensor<T>> batch : dataset.entrySet()) {
             // Make prediction
             Tensor<T> inputs = batch.getKey().detach(), targets = batch.getValue().detach();
-            Tensor<T> predictions = forwardMethod.apply(inputs);
+            Tensor<T> predictions = model.forward(inputs);
 
             // Compute loss
             Tensor<T> loss = criterion.forward(predictions, targets);
