@@ -40,3 +40,6 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Unused java code ###
+src/main/java/de/c4vxl/Main.java
