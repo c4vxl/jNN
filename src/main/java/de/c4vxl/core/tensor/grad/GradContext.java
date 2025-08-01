@@ -33,5 +33,9 @@ public class GradContext {
         }
     }
 
+    /**
+     * Returns an AutoClosable instance that can be used in a {@code try}-block
+     * to execute code without calculating gradients.
+     */
     public static NoGradClosable noGrad() { return new NoGradClosable(); }
 }
