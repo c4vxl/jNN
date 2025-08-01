@@ -29,7 +29,7 @@ public class MatMulOperation<T> extends Operation<T> {
         // This is done so that changes applied to them won't propagate to the backward pass
         Tensor<T> a = this.a, b = this.b;
 
-        if (a.shape.rank() == 1 && b.shape.rank() == 1)
+        if (a.shape.rank() == 1 || b.shape.rank() == 1)
             return a.mul(b);
 
         boolean wasA1D = false, wasB1D = false;
