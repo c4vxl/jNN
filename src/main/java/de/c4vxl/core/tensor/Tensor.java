@@ -9,6 +9,7 @@ import de.c4vxl.core.utils.BroadcastingUtils;
 import de.c4vxl.core.utils.DataUtils;
 import de.c4vxl.core.utils.TensorUtils;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
 import java.util.*;
 
@@ -72,6 +73,8 @@ public class Tensor<T> {
      * Accumulates this tensors gradient with a new one
      */
     public void accumulate_grad(Tensor<T> grad) {
+        if (!this.requires_grad) return;
+
         grad.requires_grad = false;
 
         if (this.grad == null)
@@ -84,26 +87,16 @@ public class Tensor<T> {
      * Zero out the gradients in the graph starting from this tensor
      */
     public void zeroGrad() {
-        Stack<Tensor<?>> stack = new Stack<>();
-        Set<Tensor<?>> visited = new HashSet<>();
+        // Build topological path
+        Set<Integer> visited = new HashSet<>();
+        List<Tensor<?>> order = new ArrayList<>();
+        buildTopologicalBackwardPath(this, visited, order);
 
-        // Start at this node
-        stack.push(this);
-
-        while (!stack.isEmpty()) {
-            Tensor<?> current = stack.pop();
-
-            // Skip if the current node has already been visited
-            if (!visited.add(current))
-                continue;
-
-            // Reset gradient
-            if (current.requires_grad)
-                current.grad = null;
-
-            // Add parents to the stack
-            for (Tensor<?> parent : current.parents)
-                stack.push(parent);
+        // Zero out gradients
+        for (Tensor<?> tensor : order) {
+            tensor.grad = null;
+            tensor.operation = null;
+            tensor.parents = List.of();
         }
     }
 
@@ -114,6 +107,7 @@ public class Tensor<T> {
         if (!requires_grad)
             throw new IllegalStateException("Cannot backpropagate on a tensor that doesn't have requires_grad enabled!");
 
+        // Build topological path
         Set<Integer> visited = new HashSet<>();
         List<Tensor<?>> order = new ArrayList<>();
         buildTopologicalBackwardPath(this, visited, order);
@@ -176,6 +170,8 @@ public class Tensor<T> {
         DataUtils.randomInitialization(this.data);
     }
 
+    public static List<WeakReference<Tensor<?>>> tensors = new ArrayList<>();
+
     /**
      * Construct a Tensor with a given data array and a given shape
      * @param data The data for the Tensor.
@@ -193,6 +189,8 @@ public class Tensor<T> {
             for (int i = 0; i < this.data.length; i++)
                 this.data[i] = data[i % data.length];
         }
+
+        tensors.add(new WeakReference<>(this));
     }
 
     /**

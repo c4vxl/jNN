@@ -127,7 +127,7 @@ public class StandardTrainer<T> extends Trainer {
         double total_loss = 0.;
         for (Map.Entry<Tensor<T>, Tensor<T>> batch : dataset.entrySet()) {
             // Make prediction
-            Tensor<T> inputs = batch.getKey().detach(true), targets = batch.getValue().detach(true);
+            Tensor<T> inputs = batch.getKey().detach(), targets = batch.getValue().detach();
             Tensor<T> predictions = forwardMethod.apply(inputs);
 
             // Compute loss

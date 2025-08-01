@@ -4,29 +4,26 @@ import de.c4vxl.core.optim.type.AbstractOptimizer;
 import de.c4vxl.core.tensor.Tensor;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-/**
- * This is the implementation of an Adam optimizer
- * @see de.c4vxl.core.optim.type.Optimizer
- * @see de.c4vxl.core.optim.AdamWOptimizer
- */
 public class AdamOptimizer extends AbstractOptimizer {
-    private final double beta1, beta2, epsilon, weight_decay;
+    public static int MAX_MEMORY = 1000;
+
+    private final double beta1, beta2, epsilon;
     private int timestep;
     private final Map<Tensor<?>, Tensor<?>> m, v;
 
     public AdamOptimizer(List<Tensor<?>> parameters, double learningRate) {
-        this(parameters, learningRate, 0.9, 0.999, 1e-8, 0.01);
+        this(parameters, learningRate, 0.9, 0.999, 1e-8);
     }
 
-    public AdamOptimizer(List<Tensor<?>> parameters, double learningRate, double beta1, double beta2, double epsilon, double weight_decay) {
+    public AdamOptimizer(List<Tensor<?>> parameters, double learningRate, double beta1, double beta2, double epsilon) {
         super(parameters, learningRate);
         this.beta1 = beta1;
         this.beta2 = beta2;
         this.epsilon = epsilon;
-        this.weight_decay = weight_decay;
         this.timestep = 0;
         this.m = new HashMap<>();
         this.v = new HashMap<>();
@@ -36,12 +33,29 @@ public class AdamOptimizer extends AbstractOptimizer {
     public void step() {
         timestep++;
 
-        for (Tensor<?> parameter : this.parameters)
+        for (Tensor<?> parameter : this.parameters) {
             this.handle(parameter);
+
+            // "Forget" older values
+            prune(m);
+            prune(v);
+        }
+    }
+
+    private void prune(Map<Tensor<?>, Tensor<?>> map) {
+        while (map.size() > MAX_MEMORY) {
+            Iterator<Tensor<?>> it = map.keySet().iterator();
+            if (it.hasNext()) {
+                it.next();
+                it.remove();
+            } else {
+                break;
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
-    private <T> void handle(Tensor<T> parameter) {
+    protected <T> Tensor<T> calculateStep(Tensor<T> parameter) {
         // Initialize moments if necessary
         if (!m.containsKey(parameter)) {
             m.put(parameter, Tensor.zeros(parameter.shape.dimensions).asDType(parameter.dtype));
@@ -73,12 +87,11 @@ public class AdamOptimizer extends AbstractOptimizer {
 
         // update = learningRate * m_hat / (sqrt(v_hat) + epsilon)
         Tensor<T> denom = v_hat.sqrt().add(parameter.dtype.parse(this.epsilon));
-        Tensor<T> step = m_hat.div(denom).mul(parameter.dtype.parse(this.learningRate));
+        return m_hat.div(denom).mul(parameter.dtype.parse(this.learningRate));
+    }
 
-        // Apply weight decay
-        Tensor<T> decayTerm = parameter.mul(parameter.dtype.parse(this.learningRate * this.weight_decay));
-
-        Tensor<T> updated = parameter.sub(step).sub(decayTerm);
+    protected <T> void handle(Tensor<T> parameter) {
+        Tensor<T> updated = parameter.sub(this.calculateStep(parameter));
 
         // Update parameter
         // Detach to prevent gradients from being reused in next training step
