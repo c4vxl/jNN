@@ -170,8 +170,6 @@ public class Tensor<T> {
         DataUtils.randomInitialization(this.data);
     }
 
-    public static List<WeakReference<Tensor<?>>> tensors = new ArrayList<>();
-
     /**
      * Construct a Tensor with a given data array and a given shape
      * @param data The data for the Tensor.
@@ -189,8 +187,6 @@ public class Tensor<T> {
             for (int i = 0; i < this.data.length; i++)
                 this.data[i] = data[i % data.length];
         }
-
-        tensors.add(new WeakReference<>(this));
     }
 
     /**
