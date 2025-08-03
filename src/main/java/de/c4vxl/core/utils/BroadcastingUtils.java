@@ -73,6 +73,10 @@ public class BroadcastingUtils {
     public static <T> Tensor<T> reduceToShape(Tensor<T> self, Integer... targetShape) {
         Integer[] shape = self.shape.dimensions;
 
+        // Break out early
+        if (Arrays.equals(shape, targetShape))
+            return self;
+
         int offset = shape.length - targetShape.length;
 
         // Sum over any leading broadcasted dims
