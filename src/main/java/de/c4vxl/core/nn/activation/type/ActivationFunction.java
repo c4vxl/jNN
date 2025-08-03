@@ -1,7 +1,10 @@
 package de.c4vxl.core.nn.activation.type;
 
 import de.c4vxl.core.tensor.Tensor;
-import de.c4vxl.core.tensor.operation.*;
+import de.c4vxl.core.tensor.operation.GELUOperation;
+import de.c4vxl.core.tensor.operation.LeakyReLUOperation;
+import de.c4vxl.core.tensor.operation.ReLUOperation;
+import de.c4vxl.core.tensor.operation.SigmoidOperation;
 import de.c4vxl.core.utils.TensorUtils;
 
 /**

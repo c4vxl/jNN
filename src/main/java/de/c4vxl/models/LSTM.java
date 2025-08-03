@@ -1,8 +1,8 @@
 package de.c4vxl.models;
 
+import de.c4vxl.core.nn.Linear;
 import de.c4vxl.core.nn.activation.type.ActivationFunction;
 import de.c4vxl.core.nn.module.Module;
-import de.c4vxl.core.nn.Linear;
 import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.type.DType;
 import de.c4vxl.core.utils.TensorUtils;

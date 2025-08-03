@@ -9,7 +9,6 @@ import de.c4vxl.core.utils.BroadcastingUtils;
 import de.c4vxl.core.utils.DataUtils;
 import de.c4vxl.core.utils.TensorUtils;
 
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
 import java.util.*;
 

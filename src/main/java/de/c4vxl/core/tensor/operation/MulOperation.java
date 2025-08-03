@@ -4,8 +4,6 @@ import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.tensor.operation.type.Operation;
 import de.c4vxl.core.utils.TensorUtils;
 
-import java.util.List;
-
 public class MulOperation<T> extends Operation<T> {
     protected Tensor<T> a, b;
 

@@ -1,12 +1,12 @@
 package de.c4vxl.models;
 
-import de.c4vxl.core.nn.activation.type.Activation;
-import de.c4vxl.core.nn.activation.type.ActivationFunction;
-import de.c4vxl.core.nn.module.Module;
 import de.c4vxl.core.nn.Embedding;
 import de.c4vxl.core.nn.LayerNorm;
 import de.c4vxl.core.nn.Linear;
 import de.c4vxl.core.nn.Sequence;
+import de.c4vxl.core.nn.activation.type.Activation;
+import de.c4vxl.core.nn.activation.type.ActivationFunction;
+import de.c4vxl.core.nn.module.Module;
 import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.utils.TensorUtils;
 import de.c4vxl.models.type.TextGenerationModel;

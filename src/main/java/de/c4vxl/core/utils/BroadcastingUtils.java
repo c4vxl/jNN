@@ -1,7 +1,6 @@
 package de.c4vxl.core.utils;
 
 import de.c4vxl.core.tensor.Tensor;
-import org.nd4j.shade.wstx.util.StringUtil;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;

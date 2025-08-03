@@ -1,7 +1,6 @@
 package de.c4vxl.train;
 
 import de.c4vxl.core.nn.loss.type.LossFunction;
-import de.c4vxl.core.nn.module.Module;
 import de.c4vxl.core.optim.type.AbstractOptimizer;
 import de.c4vxl.core.optim.type.Optimizer;
 import de.c4vxl.core.tensor.Tensor;
@@ -12,7 +11,6 @@ import de.c4vxl.train.type.Trainer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 /**
  * This trainer allows for training on most preprocessed datasets with a train and an optional test split.
