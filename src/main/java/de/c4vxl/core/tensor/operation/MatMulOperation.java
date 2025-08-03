@@ -32,16 +32,6 @@ public class MatMulOperation<T> extends Operation<T> {
         if (a.shape.rank() == 1 || b.shape.rank() == 1)
             return a.mul(b);
 
-        boolean wasA1D = false, wasB1D = false;
-        if (a.shape.rank() == 1) {
-            a = a.unsqueeze(0);
-            wasA1D = true;
-        }
-        if (b.shape.rank() == 1) {
-            b = b.unsqueeze(0);
-            wasB1D = true;
-        }
-
         // pad a and b to same rank
         int length = Math.max(a.shape.rank(), b.shape.rank());
         a = a.reshape(TensorUtils.padShapeLeft(length, false, a.shape.dimensions));
@@ -76,9 +66,6 @@ public class MatMulOperation<T> extends Operation<T> {
             TensorUtils.performBlockMultiplication(a, b, result, aRows, aCols, bCols,
                     0, 0, 0, 0, 32);
         }
-
-        if (wasA1D) result = result.squeeze(0);
-        if (wasB1D) result = result.squeeze(-1);
 
         return result;
     }
