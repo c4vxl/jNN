@@ -499,83 +499,96 @@ public class Tensor<T> {
     /**
      * Perform element wise addition between the values of this Tensor another value
      * @param other The other value
+     * @see Tensor#add 
      */
     public Tensor<T> add(T other) { return this.add(Tensor.filled(other, this.shape.dimensions)); }
 
     /**
      * Perform element wise addition between the values of this Tensor and another one
      * @param other The second Tensor
+     * @see de.c4vxl.core.tensor.operation.AddOperation
      */
     public Tensor<T> add(Tensor<T> other) { return new AddOperation<>(this, other).forward(); }
 
     /**
      * Perform element wise subtraction between the values of this Tensor another value
      * @param other The other value
+     * @see Tensor#sub 
      */
     public Tensor<T> sub(T other) { return this.sub(Tensor.filled(other, this.shape.dimensions)); }
 
     /**
      * Perform element wise subtraction between the values of this Tensor and another one
      * @param other The second Tensor
+     * @see de.c4vxl.core.tensor.operation.SubOperation
      */
     public Tensor<T> sub(Tensor<T> other) { return new SubOperation<>(this, other).forward(); }
 
     /**
      * Perform element wise division between the values of this Tensor another value
      * @param other The other value
+     * @see Tensor#div 
      */
     public Tensor<T> div(T other) { return this.div(Tensor.filled(other, this.shape.dimensions)); }
 
     /**
      * Perform element wise division between the values of this Tensor and another one
      * @param other The second Tensor
+     * @see de.c4vxl.core.tensor.operation.DivOperation
      */
     public Tensor<T> div(Tensor<T> other) { return new DivOperation<>(this, other).forward(); }
 
     /**
      * Perform element wise multiplication between the values of this Tensor another value
      * @param other The other value
+     * @see Tensor#mul 
      */
     public Tensor<T> mul(T other) { return this.mul(Tensor.filled(other, this.shape.dimensions)); }
 
     /**
      * Perform element wise multiplication between the values of this Tensor and another one
      * @param other The second Tensor
+     * @see de.c4vxl.core.tensor.operation.MulOperation
      */
     public Tensor<T> mul(Tensor<T> other) { return new MulOperation<>(this, other).forward(); }
 
     /**
      * Raise each element to a power
      * @param power The power
+     * @see Tensor#pow 
      */
     public Tensor<T> pow(double power) { return this.pow(Tensor.filled(power, this.shape.dimensions)); }
 
     /**
      * Perform element wise power between the values of this Tensor and another one
      * @param power The second Tensor
+     * @see de.c4vxl.core.tensor.operation.PowOperation
      */
     public Tensor<T> pow(Tensor<?> power) { return new PowOperation<>(this, power.asDType(this.dtype)).forward(); }
 
     /**
      * Compute the square root for each element
+     * @see Tensor#root 
+     * @see de.c4vxl.core.tensor.operation.RootOperation
      */
     public Tensor<T> sqrt() { return this.root(2.); }
 
     /**
      * Compute the n-th root for each element
      * @param degree The degree of the root
+     * @see de.c4vxl.core.tensor.operation.RootOperation
      */
     public Tensor<T> root(double degree) { return new RootOperation<>(this, degree).forward(); }
 
     /**
      * Perform exponentiation on each element
+     * @see de.c4vxl.core.tensor.operation.ExpOperation
      */
-    public Tensor<T> exp() {
-        return TensorUtils.elementWise(this, (a, i) -> Math.exp(DType.DOUBLE.parse(a)));
-    }
+    public Tensor<T> exp() { return new ExpOperation<>(this).forward(); }
 
     /**
      * Perform logarithm on each element
+     * @see de.c4vxl.core.tensor.operation.LogOperation
      */
     public Tensor<T> log() { return new LogOperation<>(this).forward(); }
 
@@ -588,9 +601,17 @@ public class Tensor<T> {
      * Clip each element at a min and max
      * @param min The lowest value an element can be
      * @param max The largest value an element can be
+     * @see de.c4vxl.core.tensor.operation.ClipOperation
      */
     public Tensor<T> clip(double min, double max) { return new ClipOperation<>(this, min, max).forward(); }
 
+    /**
+     * Apply Hyperbolic Tangent (Tanh) element-wise
+     * Tanh is defined as `tanh(x) = (exp(x)−exp(−x))/exp(x)+exp(−x)`
+     * @see de.c4vxl.core.tensor.operation.TanhOperation
+     */
+    public Tensor<T> tanh() { return new TanhOperation<>(this).forward(); }
+    
     /**
      * Get the higher element between two tensors (element wise)
      */

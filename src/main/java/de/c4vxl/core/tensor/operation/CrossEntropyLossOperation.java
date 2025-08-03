@@ -1,6 +1,6 @@
 package de.c4vxl.core.tensor.operation;
 
-import de.c4vxl.core.nn.activation.ActivationFunction;
+import de.c4vxl.core.nn.activation.type.ActivationFunction;
 import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.tensor.operation.type.Operation;
 

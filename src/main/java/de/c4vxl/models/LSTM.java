@@ -1,6 +1,6 @@
 package de.c4vxl.models;
 
-import de.c4vxl.core.nn.activation.ActivationFunction;
+import de.c4vxl.core.nn.activation.type.ActivationFunction;
 import de.c4vxl.core.nn.module.Module;
 import de.c4vxl.core.nn.Linear;
 import de.c4vxl.core.tensor.Tensor;
@@ -52,13 +52,12 @@ public class LSTM extends Module {
                     .add(this.hh.forward(h_prev)), -1, this.hidden_size);
             Tensor<T> i = ActivationFunction.Sigmoid(gates[0]);
             Tensor<T> f = ActivationFunction.Sigmoid(gates[1]);
-            Tensor<T> g = ActivationFunction.tanh(gates[2]);
+            Tensor<T> g = gates[2].tanh();
             Tensor<T> o = ActivationFunction.Sigmoid(gates[3]);
 
             // calculate hidden and cell state
             Tensor<T> c_next = f.mul(c_prev).add(i.mul(g));
-            Tensor<T> h_next = o.mul(ActivationFunction.tanh(c_next));
-
+            Tensor<T> h_next = o.mul(c_next.tanh());
 //            if (!is_batched) {
 //                c_next = c_next.squeeze(0);
 //                h_next = h_next.squeeze(0);

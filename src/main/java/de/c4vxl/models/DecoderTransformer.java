@@ -1,7 +1,7 @@
 package de.c4vxl.models;
 
-import de.c4vxl.core.nn.activation.Activation;
-import de.c4vxl.core.nn.activation.ActivationFunction;
+import de.c4vxl.core.nn.activation.type.Activation;
+import de.c4vxl.core.nn.activation.type.ActivationFunction;
 import de.c4vxl.core.nn.module.Module;
 import de.c4vxl.core.nn.Embedding;
 import de.c4vxl.core.nn.LayerNorm;
