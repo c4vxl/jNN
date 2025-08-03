@@ -38,11 +38,11 @@ public class DType<T> {
         // Try to convert obj into a Number
         Number number = obj instanceof Number ? (Number) obj : Double.valueOf(obj.toString());
 
-        if (dtype == INTEGER) return (T) (Integer) number.intValue();
-        if (dtype == LONG) return (T) (Long) number.longValue();
-        if (dtype == BOOLEAN) return (T) (Boolean) (number.intValue() > 0);
-        if (dtype == DOUBLE) return (T) (Double) number.doubleValue();
-        if (dtype == FLOAT) return (T) (Float) number.floatValue();
+        if (dtype.equals(INTEGER)) return (T) (Integer) number.intValue();
+        if (dtype.equals(LONG)) return (T) (Long) number.longValue();
+        if (dtype.equals(BOOLEAN)) return (T) (Boolean) (number.intValue() > 0);
+        if (dtype.equals(DOUBLE)) return (T) (Double) number.doubleValue();
+        if (dtype.equals(FLOAT)) return (T) (Float) number.floatValue();
         if (obj instanceof Boolean bool) return dtype.parse(bool ? 1 : 0);
 
         // Avoid reflection unless absolutely necessary
