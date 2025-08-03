@@ -142,6 +142,6 @@ public class StandardTrainer<T> extends Trainer {
             total_loss += DType.DOUBLE.parse(loss.item());
         }
 
-        return total_loss;
+        return total_loss / dataset.size();
     }
 }
