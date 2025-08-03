@@ -4,10 +4,7 @@ import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.type.DType;
 import de.c4vxl.core.type.Shape;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.function.BiFunction;
 
 /**
@@ -32,6 +29,38 @@ public class TensorUtils {
                 tensor.data[i * cols + j] = tensor.dtype.parse(newVal);
 
         return tensor;
+    }
+
+    /**
+     * Generates a topological backward path from a starting point
+     * @param startingPoint The starting point in the graph
+     */
+    public static List<Tensor<?>> generateTopologicalBackwardPath(Tensor<?> startingPoint) {
+        Set<Integer> visited = new HashSet<>();
+        List<Tensor<?>> order = new ArrayList<>();
+        buildTopologicalBackwardPath(startingPoint, visited, order);
+        return order;
+    }
+
+    /**
+     * Helper function for building a topological backward graph
+     * @param tensor The starting point
+     * @param visited A list of previously visited nodes
+     * @param order Any past nodes to be prepended
+     */
+    private static void buildTopologicalBackwardPath(Tensor<?> tensor, Set<Integer> visited, List<Tensor<?>> order) {
+        // Skip if node has already been visited
+        // Using System.identityHashCode since a node could be the parent of two different nodes in the graph
+        // This will look out for a change in the gradient
+        if (!visited.add(System.identityHashCode(tensor)))
+            return;
+
+        // Add parents to the stack
+        for (Tensor<?> parent : tensor.parents)
+            buildTopologicalBackwardPath(parent, visited, order);
+
+        // Add order
+        order.add(tensor);
     }
 
     /**

@@ -88,9 +88,7 @@ public class Tensor<T> {
      */
     public void zeroGrad() {
         // Build topological path
-        Set<Integer> visited = new HashSet<>();
-        List<Tensor<?>> order = new ArrayList<>();
-        buildTopologicalBackwardPath(this, visited, order);
+        List<Tensor<?>> order = TensorUtils.generateTopologicalBackwardPath(this);
 
         // Zero out gradients
         for (Tensor<?> tensor : order) {
@@ -108,9 +106,7 @@ public class Tensor<T> {
             throw new IllegalStateException("Cannot backpropagate on a tensor that doesn't have requires_grad enabled!");
 
         // Build topological path
-        Set<Integer> visited = new HashSet<>();
-        List<Tensor<?>> order = new ArrayList<>();
-        buildTopologicalBackwardPath(this, visited, order);
+        List<Tensor<?>> order = TensorUtils.generateTopologicalBackwardPath(this);
 
         // Initialize gradient
         if (this.grad == null)
@@ -120,21 +116,6 @@ public class Tensor<T> {
         for (Tensor<?> tensor : order)
             if (tensor.operation != null)
                 tensor.operation.backward(tensor.grad);
-    }
-
-    private void buildTopologicalBackwardPath(Tensor<?> tensor, Set<Integer> visited, List<Tensor<?>> order) {
-        // Skip if node has already been visited
-        // Using System.identityHashCode since a node could be the parent of two different nodes in the graph
-        // This will look out for a change in the gradient
-        if (!visited.add(System.identityHashCode(tensor)))
-            return;
-
-        // Add parents to the stack
-        for (Tensor<?> parent : tensor.parents)
-            buildTopologicalBackwardPath(parent, visited, order);
-
-        // Add order
-        order.add(tensor);
     }
 
     /**
