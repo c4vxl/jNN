@@ -3,11 +3,11 @@ package de.c4vxl.core.utils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.Strictness;
+import com.google.gson.reflect.TypeToken;
 import de.c4vxl.core.nn.module.Module;
 import de.c4vxl.core.tensor.Tensor;
 import de.c4vxl.core.type.DType;
 import de.c4vxl.jNN;
-import org.nd4j.shade.guava.reflect.TypeToken;
 
 import java.io.File;
 import java.io.IOException;
