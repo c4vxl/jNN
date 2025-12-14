@@ -113,8 +113,14 @@ public class Tensor<T> {
 
         Collections.reverse(order);
         for (Tensor<?> tensor : order)
-            if (tensor.operation != null)
-                tensor.operation.backward(tensor.grad);
+            if (tensor.operation != null) {
+                Tensor<?> grad = tensor.grad;
+
+                if (grad == null)
+                    grad = Tensor.zeros(tensor.shape.dimensions).asDType(tensor.dtype);
+
+                tensor.operation.backward(grad);
+            }
     }
 
     /**
