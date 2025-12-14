@@ -20,10 +20,19 @@ public class Linear extends Module {
     }
 
     public <T> Tensor<T> forward(Tensor<T> input) {
+        boolean wasUnsqueezed = false;
+        if (input.dim() == 1) {
+            wasUnsqueezed = true;
+            input = input.unsqueeze(0);
+        }
+
         Tensor<T> result = input.matmul(this.weight.asDType(input.dtype));
 
         if (this.bias != null)
             result = result.add(this.bias.asDType(input.dtype));
+
+        if (wasUnsqueezed)
+            return result.squeeze(0);
 
         return result;
     }
