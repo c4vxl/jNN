@@ -204,6 +204,7 @@ To compile **jNN** youself, simply follow these steps:
 # Resources
 - [Example Project](https://github.com/c4vxl/jNN_playground/)
 - [Documentation](https://docs.c4vxl.de/jNN/)
+- [Export PyTorch models](https://github.com/c4vxl/jNN-python/)
 
 <br>
 
