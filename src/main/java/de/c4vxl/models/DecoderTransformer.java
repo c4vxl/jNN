@@ -77,8 +77,9 @@ public class DecoderTransformer extends TextGenerationModel {
 
         @SuppressWarnings("unchecked")
         public <T> Tensor<T> forward(Tensor<T> x) {
-            x = x.add(this.attn.forward(this.ln_1.forward(x)));
-            x = x.add((Tensor<T>) this.mlp.forward(this.ln_2.forward(x)));
+            T scale = x.dtype.parse(Math.pow(2, 0.5));
+            x = x.add(this.attn.forward(this.ln_1.forward(x)).div(scale));
+            x = x.add(((Tensor<T>) this.mlp.forward(this.ln_2.forward(x))).div(scale));
             return x;
         }
     }
