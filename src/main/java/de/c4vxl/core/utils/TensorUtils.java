@@ -457,26 +457,32 @@ public class TensorUtils {
         Random rand = new Random();
 
         for (int row = 0; row < input.size(0); row++) {
-            Double[] probabilities = input.get(row).asDouble().data;
-            double sum = Arrays.stream(probabilities).reduce(Double::sum).orElseThrow();
-            if (sum != 1.0)
-                for (int j = 0; j < probabilities.length; j++)
-                    probabilities[j] /= sum;
+            // Compute probabilities
+            List<Double> probs = new ArrayList<>(Arrays.asList(input.get(row).asDouble().data));
+            double sum = probs.stream().mapToDouble(Double::doubleValue).sum();
+            probs.replaceAll(a -> a / sum); // normalize
 
-            Double[] cumulativeProbabilities = probabilities.clone();
-            cumulativeProbabilities[0] = probabilities[0];
-            for (int i = 1; i < cumulativeProbabilities.length; i++)
-                cumulativeProbabilities[i] = cumulativeProbabilities[i - 1] + probabilities[i];
+            // Compute cumulative probabilities
+            double[] cdf = new double[probs.size()];
+            cdf[0] = probs.getFirst();
 
+            for (int i = 1; i < cdf.length; i++)
+                cdf[i] = cdf[i - 1] + probs.get(i);
+
+            // Sample
             for (int sample = 0; sample < num_samples; sample++) {
-                double randomValue = rand.nextDouble();
+                double r = rand.nextDouble();
                 int sampledIndex = 0;
-                for (int i = 0; i < probabilities.length; i++)
-                    if (randomValue < cumulativeProbabilities[i]) {
+                for (int i = 0; i < cdf.length; i++)
+                    if (r < cdf[i]) {
                         sampledIndex = i;
                         break;
                     }
+
                 result.set(sampledIndex, row, sample);
+
+                // Remove sampled prob
+                probs.remove(sampledIndex);
             }
         }
 
