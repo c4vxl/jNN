@@ -30,10 +30,10 @@ public abstract class Tokenizer extends Module {
     public abstract String convertIdToToken(Integer token);
     public abstract Map<String, Integer> getVocab();
 
-    public Tensor<Float> encode(String text) { return Tensor.of(encode_(text)).asFloat().unsqueeze(0); }
+    public Tensor<Double> encode(String text) { return Tensor.of(encode_(text)).asDouble().unsqueeze(0); }
     public String decode(Tensor<?> text) { return decode_(text.squeeze().asInt().data); }
 
-    public Tensor<Float> forward(String text) {
+    public Tensor<Double> forward(String text) {
         return this.encode(text);
     }
 }

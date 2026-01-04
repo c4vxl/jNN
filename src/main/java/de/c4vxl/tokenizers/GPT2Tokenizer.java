@@ -180,15 +180,22 @@ public class GPT2Tokenizer extends Tokenizer {
             List<String> newWord = new ArrayList<>();
             int i = 0;
             while (i < word.size()) {
-                int j = word.subList(i, word.size()).indexOf(first); // 'word.index(first, i)'
+                // 'word.index(first, i)'
+                int j = -1;
+                for (int k = i; k < word.size(); k++) {
+                    if (word.get(k).equals(first)) {
+                        j = k;
+                        break;
+                    }
+                }
 
                 if (j == -1) {
                     newWord.addAll(word.subList(i, word.size()));
                     break;
-                } else {
-                    newWord.addAll(word.subList(i, j));
-                    i = j;
                 }
+
+                newWord.addAll(word.subList(i, j));
+                i = j;
 
                 if (word.get(i).equals(first) && i < word.size() - 1 && word.get(i + 1).equals(second)) {
                     newWord.add(first + second);

@@ -62,8 +62,8 @@ public class TextGenerationPipeline extends Pipeline {
     public String forward(String prompt, int max_new_tokens) { return this.forward(prompt, max_new_tokens, stream); }
     public String forward(String prompt, int max_new_tokens, TextGenerationModel.GenerationStream stream) { return this.forward(prompt, this.temperature, max_new_tokens, this.blockSize, stream); }
     public String forward(String prompt, double temperature, int max_new_tokens, int block_size, TextGenerationModel.GenerationStream stream) {
-        Tensor<Float> tokenized = this.tokenizer.forward(prompt);
-        Tensor<Float> output = model.generate(tokenized, temperature, max_new_tokens, block_size, eos, stream);
+        Tensor<Double> tokenized = this.tokenizer.forward(prompt);
+        Tensor<Double> output = model.generate(tokenized, temperature, max_new_tokens, block_size, eos, stream);
         return this.tokenizer.decode(output);
     }
 }
